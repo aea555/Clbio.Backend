@@ -1,5 +1,4 @@
-﻿using Clbio.Infrastructure.Extensions;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Clbio.Infrastructure.DependencyInjection

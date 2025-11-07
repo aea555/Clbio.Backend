@@ -28,7 +28,7 @@ services:
   clbio-api:
     build:
       context: .
-      dockerfile: Clbio.API/Dockerfile
+      dockerfile: Dockerfile
     container_name: clbio-api
     depends_on:
       - postgres
