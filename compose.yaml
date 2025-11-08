@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:latest
+    image: postgres:16
     container_name: clbio-db
     restart: unless-stopped
     ports:
@@ -11,6 +11,11 @@ services:
       - postgres-data:/var/lib/postgresql/data
     networks:
       - clbio-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -30,8 +35,10 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: clbio-api
+    restart: unless-stopped
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     ports:
       - "8080:8080"
     env_file:
@@ -40,7 +47,7 @@ services:
       - ConnectionStrings__DefaultConnection=${DB_CONNECTION_DOCKER}
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
     networks:
-      - clbio-net
+      - clbio-net  
 
 volumes:
   postgres-data:
