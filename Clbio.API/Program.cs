@@ -1,4 +1,5 @@
 using Clbio.API.DependencyInjection;
+using Clbio.API.Middlewares;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,7 +12,9 @@ builder.Configuration
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services
     .AddOpenApi()
-    .AddClbio(builder.Configuration);
+    .AddClbio(builder.Configuration)
+    .AddCorsPolicy()
+    .AddGlobalRateLimiter();
 
 var app = builder.Build();
 
@@ -26,6 +29,10 @@ app.MapGet("/health", () => Results.Ok("Healthy"));
 app.ApplyMigrations();
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowFrontendDev");
+
+app.UseRateLimiter();
 
 app.Run();
 
