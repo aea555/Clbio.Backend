@@ -1,5 +1,5 @@
-﻿using Clbio.Domain.Entities;
-using Clbio.Domain.Entities.Base;
+﻿using Clbio.Domain.Entities.V1;
+using Clbio.Domain.Entities.V1.Base;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 

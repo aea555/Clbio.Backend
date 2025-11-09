@@ -1,13 +1,10 @@
-﻿using Clbio.Domain.Entities.Base;
-using System.ComponentModel.DataAnnotations;
+﻿using Clbio.Domain.Entities.V1.Base;
 
-namespace Clbio.Domain.Entities
+namespace Clbio.Domain.Entities.V1
 {
     public class Board : EntityBase
     {
-        [Required, MaxLength(100)]
         public string Name { get; set; } = null!;
-        [MaxLength(500)]
         public string? Description { get; set; }
         public Guid WorkspaceId { get; set; }
         public Workspace Workspace { get; set; } = null!;

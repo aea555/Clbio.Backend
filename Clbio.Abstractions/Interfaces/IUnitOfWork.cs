@@ -1,5 +1,5 @@
 ﻿using Clbio.Abstractions.Interfaces.Repositories;
-using Clbio.Domain.Entities.Base;
+using Clbio.Domain.Entities.V1.Base;
 
 namespace Clbio.Abstractions.Interfaces
 {

@@ -1,11 +1,9 @@
-﻿using Clbio.Domain.Entities.Base;
-using System.ComponentModel.DataAnnotations;
+﻿using Clbio.Domain.Entities.V1.Base;
 
-namespace Clbio.Domain.Entities
+namespace Clbio.Domain.Entities.V1
 {
     public class Column : EntityBase
     {
-        [MaxLength(100)]
         public string Name { get; set; } = null!;
         public int Position { get; set; }
         public Guid BoardId { get; set; }

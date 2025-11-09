@@ -1,15 +1,13 @@
-﻿using Clbio.Domain.Entities.Base;
+﻿using Clbio.Domain.Entities.V1.Base;
 using System.ComponentModel.DataAnnotations;
 
-namespace Clbio.Domain.Entities
+namespace Clbio.Domain.Entities.V1
 {
     public class User : EntityBase
     {
-        [Required, MaxLength(100)]
-        public string Email { get; set; } = null!;
-        public string PasswordHash { get; set; } = null!;
-        [Required, MaxLength(100)]
-        public string DisplayName { get; set; } = null!;
+        public string Email { get; set; } = default!;
+        public string PasswordHash { get; set; } = default!;
+        public string DisplayName { get; set; } = default!;
         public string? AvatarUrl { get; set; }
         public ICollection<WorkspaceMember> WorkspaceMemberships { get; set; } = [];
         public ICollection<TaskItem> AssignedTasks { get; set; } = [];

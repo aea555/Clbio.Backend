@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Clbio.Domain.Entities.Base
+namespace Clbio.Domain.Entities.V1.Base
 {
     public abstract class EntityBase
     {

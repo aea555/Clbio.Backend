@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AutoMapper" Version="15.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.6" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.10">
@@ -22,10 +23,6 @@
     <ProjectReference Include="..\Clbio.Application\Clbio.Application.csproj" />
     <ProjectReference Include="..\Clbio.Domain\Clbio.Domain.csproj" />
     <ProjectReference Include="..\Clbio.Infrastructure\Clbio.Infrastructure.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Controllers\v1\" />
   </ItemGroup>
 
 </Project>

@@ -2,7 +2,7 @@
 using Clbio.Abstractions.Interfaces.Repositories;
 using Clbio.Abstractions.Interfaces.Services;
 using Clbio.Application.Services;
-using Clbio.Domain.Entities;
+using Clbio.Domain.Entities.V1;
 using Moq;
 using System.Linq.Expressions;
 

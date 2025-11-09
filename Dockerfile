@@ -9,6 +9,7 @@ COPY Clbio.Infrastructure/Clbio.Infrastructure.csproj Clbio.Infrastructure/
 COPY Clbio.Domain/Clbio.Domain.csproj Clbio.Domain/
 COPY Clbio.Tests/Clbio.Tests.csproj Clbio.Tests/
 COPY Clbio.Abstractions/Clbio.Abstractions.csproj Clbio.Abstractions/
+COPY Clbio.Shared/Clbio.Shared.csproj Clbio.Shared/
 RUN dotnet restore
 
 COPY . .

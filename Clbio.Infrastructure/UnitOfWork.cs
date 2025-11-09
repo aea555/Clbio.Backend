@@ -1,6 +1,6 @@
 ﻿using Clbio.Abstractions.Interfaces;
 using Clbio.Abstractions.Interfaces.Repositories;
-using Clbio.Domain.Entities.Base;
+using Clbio.Domain.Entities.V1.Base;
 using Clbio.Infrastructure.Data;
 using Clbio.Infrastructure.Repositories.Base;
 

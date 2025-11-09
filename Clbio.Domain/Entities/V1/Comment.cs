@@ -1,11 +1,9 @@
-﻿using Clbio.Domain.Entities.Base;
-using System.ComponentModel.DataAnnotations;
+﻿using Clbio.Domain.Entities.V1.Base;
 
-namespace Clbio.Domain.Entities
+namespace Clbio.Domain.Entities.V1
 {
     public class Comment : EntityBase
     {
-        [Required, MaxLength(500)]
         public string Body { get; set; } = null!;
         public Guid TaskId { get; set; }
         public TaskItem Task { get; set; } = null!;
