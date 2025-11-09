@@ -1,4 +1,4 @@
-﻿namespace Clbio.API.Middlewares
+﻿namespace Clbio.API.Extensions
 {
     public static class CorsPolicy
     {

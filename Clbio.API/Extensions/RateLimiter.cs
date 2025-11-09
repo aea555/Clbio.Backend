@@ -1,6 +1,6 @@
 ﻿using System.Threading.RateLimiting;
 
-namespace Clbio.API.Middlewares
+namespace Clbio.API.Extensions
 {
     public static class RateLimiter
     {

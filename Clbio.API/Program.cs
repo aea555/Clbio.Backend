@@ -1,22 +1,24 @@
 using Clbio.API.DependencyInjection;
-using Clbio.API.Middlewares;
+using Clbio.API.Extensions;
+using Clbio.API.Middleware;
 
-var builder = WebApplication.CreateBuilder(args);
-
-builder.Configuration
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
-    .AddEnvironmentVariables();
-
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services
-    .AddOpenApi()
-    .AddClbio(builder.Configuration)
-    .AddCorsPolicy()
-    .AddGlobalRateLimiter();
+var builder = WebApplication.CreateBuilder(args)
+    .ConfigureBuilder()
+    .ConfigureBuilderServices();
 
 var app = builder.Build();
+
+app.ApplyMigrations();
+
+//security and middlewares
+app.UseCors("AllowFrontendDev");
+app.UseRateLimiter();
+app.UseApiSecurity(app.Environment);
+app.UseMiddleware<ErrorHandlerMiddleware>();
+//app.UseAuthentication();             
+//app.UseAuthorization();
+
+app.MapControllers();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -25,14 +27,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapGet("/health", () => Results.Ok("Healthy"));
-
-app.ApplyMigrations();
-
-app.UseHttpsRedirection();
-
-app.UseCors("AllowFrontendDev");
-
-app.UseRateLimiter();
 
 app.Run();
 
