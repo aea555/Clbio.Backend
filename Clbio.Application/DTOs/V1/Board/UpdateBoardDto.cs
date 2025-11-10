@@ -1,12 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Clbio.Application.DTOs.V1.Base;
+using System.ComponentModel.DataAnnotations;
 
 namespace Clbio.Application.DTOs.V1.Board
 {
-    internal class UpdateBoardDto
+    public class UpdateBoardDto : RequestDtoBase
     {
+        [Required]
+        public Guid Id { get; set; }
+
+        [Required]
+        [StringLength(100, MinimumLength = 3)]
+        public string Name { get; set; } = null!;
+
+        [StringLength(500)]
+        public string? Description { get; set; }
     }
 }

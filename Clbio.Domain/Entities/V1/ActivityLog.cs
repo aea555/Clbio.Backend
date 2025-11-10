@@ -12,5 +12,7 @@ namespace Clbio.Domain.Entities.V1
         public string EntityType { get; set; } = null!;
         public Guid EntityId { get; set; }
         public string Metadata { get; set; } = null!;
+        public string? IpAddress { get; set; }
+        public string? UserAgent { get; set; }
     }
 }

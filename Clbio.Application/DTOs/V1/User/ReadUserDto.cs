@@ -1,12 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Clbio.Application.DTOs.V1.Base;
 
 namespace Clbio.Application.DTOs.V1.User
 {
-    internal class ReadUserDto
+    public class ReadUserDto : ResponseDtoBase
     {
+        public Guid Id { get; set; }
+        public string Email { get; set; } = default!;
+        public string DisplayName { get; set; } = default!;
+        public string? AvatarUrl { get; set; }
     }
 }

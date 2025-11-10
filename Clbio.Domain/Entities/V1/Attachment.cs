@@ -6,9 +6,11 @@ namespace Clbio.Domain.Entities.V1
     {
         public string FileName { get; set; } = null!;
         public string Url { get; set; } = null!;
+        public string? ContentType { get; set; }
         public long SizeBytes { get; set; }
         public Guid TaskId { get; set; }
         public TaskItem Task { get; set; } = null!;
+        public Guid UploadedById { get; set; }
+        public User UploadedBy { get; set; } = null!;
     }
-
 }

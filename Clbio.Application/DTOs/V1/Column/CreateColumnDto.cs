@@ -1,12 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Clbio.Application.DTOs.V1.Base;
+using System.ComponentModel.DataAnnotations;
 
 namespace Clbio.Application.DTOs.V1.Column
 {
-    internal class CreateColumnDto
+    public class CreateColumnDto : RequestDtoBase
     {
+        [Required]
+        [StringLength(100, MinimumLength = 1)]
+        public string Name { get; set; } = null!;
+
+        public int Position { get; set; } = 0;
+
+        [Required]
+        public Guid BoardId { get; set; }
     }
 }

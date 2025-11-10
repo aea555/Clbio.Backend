@@ -1,12 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Clbio.Application.DTOs.V1.Base;
+using System.ComponentModel.DataAnnotations;
 
 namespace Clbio.Application.DTOs.V1.User
 {
-    internal class UpdateUserDto
+    public class UpdateUserDto : RequestDtoBase
     {
+        [Required]
+        [StringLength(50, MinimumLength = 3)]
+        public string DisplayName { get; set; } = null!;
+
+        [Url]
+        public string? AvatarUrl { get; set; }
     }
 }

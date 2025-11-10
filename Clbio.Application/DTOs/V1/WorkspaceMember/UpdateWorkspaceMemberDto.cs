@@ -7,10 +7,9 @@ namespace Clbio.Application.DTOs.V1.WorkspaceMember
     public class UpdateWorkspaceMemberDto : RequestDtoBase
     {
         [Required]
-        public Guid WorkspaceId { get; set; }
+        public Guid Id { get; set; }
+
         [Required]
-        public Guid UserId { get; set; }
-        [Required]
-        public WorkspaceRole Role { get; set; } = WorkspaceRole.MEMBER;
+        public WorkspaceRole Role { get; set; }
     }
 }

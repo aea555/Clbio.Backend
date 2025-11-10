@@ -13,9 +13,15 @@ namespace Clbio.Application.Services.Base
         ILogger<ServiceBase<T>>? logger = null)
         : IService<T> where T : EntityBase
     {
-        private readonly IRepository<T> _repository = unitOfWork.Repository<T>();
-        private readonly IUnitOfWork _uow = unitOfWork;
+        protected readonly IRepository<T> _repository = unitOfWork.Repository<T>();
+        protected readonly IUnitOfWork _uow = unitOfWork;
         protected readonly ILogger? _logger = logger;
+
+        // every derived service needs to have access to its own repo
+        protected IRepository<T> Repository => _uow.Repository<T>();
+        // helper
+        protected IRepository<TRelated> Repo<TRelated>() where TRelated : EntityBase
+            => _uow.Repository<TRelated>();
 
         public virtual Task<Result<IEnumerable<T>>> GetAllAsync(CancellationToken ct = default) =>
             SafeExecution.ExecuteSafeAsync(() => _repository.GetAllAsync(ct), _logger, "GET_ALL_FAILED");

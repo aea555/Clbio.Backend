@@ -1,12 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Clbio.Application.DTOs.V1.Base;
 
 namespace Clbio.Application.DTOs.V1.Column
 {
-    internal class ReadColumnDto
+    public class ReadColumnDto : ResponseDtoBase
     {
+        public Guid Id { get; set; }
+        public string Name { get; set; } = null!;
+        public int Position { get; set; }
+        public Guid BoardId { get; set; }
+
+        //optional
+        public int TaskCount { get; set; }
     }
 }

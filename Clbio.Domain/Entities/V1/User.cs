@@ -1,5 +1,4 @@
 ﻿using Clbio.Domain.Entities.V1.Base;
-using System.ComponentModel.DataAnnotations;
 
 namespace Clbio.Domain.Entities.V1
 {
