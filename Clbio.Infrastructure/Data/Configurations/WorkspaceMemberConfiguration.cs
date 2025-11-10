@@ -1,4 +1,4 @@
-﻿using Clbio.Domain.Entities;
+﻿using Clbio.Domain.Entities.V1;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

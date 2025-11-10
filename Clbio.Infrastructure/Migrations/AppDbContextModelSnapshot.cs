@@ -22,11 +22,14 @@ namespace Clbio.Infrastructure.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
-            modelBuilder.Entity("Clbio.Domain.Entities.Attachment", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.Attachment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
+
+                    b.Property<string>("ContentType")
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -39,8 +42,7 @@ namespace Clbio.Infrastructure.Migrations
 
                     b.Property<string>("FileName")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
@@ -57,6 +59,9 @@ namespace Clbio.Infrastructure.Migrations
                     b.Property<Guid?>("UpdatedBy")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid>("UploadedById")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("Url")
                         .IsRequired()
                         .HasColumnType("text");
@@ -65,10 +70,12 @@ namespace Clbio.Infrastructure.Migrations
 
                     b.HasIndex("TaskId");
 
+                    b.HasIndex("UploadedById");
+
                     b.ToTable("Attachment");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.Board", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.Board", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -84,16 +91,14 @@ namespace Clbio.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -111,7 +116,7 @@ namespace Clbio.Infrastructure.Migrations
                     b.ToTable("Boards");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.Column", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.Column", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -134,8 +139,7 @@ namespace Clbio.Infrastructure.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("text");
 
                     b.Property<int>("Position")
                         .HasColumnType("integer");
@@ -153,7 +157,7 @@ namespace Clbio.Infrastructure.Migrations
                     b.ToTable("Columns");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.Comment", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.Comment", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -164,8 +168,7 @@ namespace Clbio.Infrastructure.Migrations
 
                     b.Property<string>("Body")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -197,7 +200,7 @@ namespace Clbio.Infrastructure.Migrations
                     b.ToTable("Comments");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.Notification", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.Notification", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -220,8 +223,7 @@ namespace Clbio.Infrastructure.Migrations
 
                     b.Property<string>("Message")
                         .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -239,7 +241,7 @@ namespace Clbio.Infrastructure.Migrations
                     b.ToTable("Notifications");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.TaskItem", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.TaskItem", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -261,8 +263,7 @@ namespace Clbio.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
@@ -272,8 +273,7 @@ namespace Clbio.Infrastructure.Migrations
 
                     b.Property<string>("Title")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -290,7 +290,7 @@ namespace Clbio.Infrastructure.Migrations
                     b.ToTable("Tasks");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.User", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.User", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -310,13 +310,11 @@ namespace Clbio.Infrastructure.Migrations
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("text");
 
                     b.Property<string>("Email")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
@@ -336,7 +334,7 @@ namespace Clbio.Infrastructure.Migrations
                     b.ToTable("Users");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.Workspace", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.Workspace", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -352,16 +350,14 @@ namespace Clbio.Infrastructure.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<string>("Description")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
+                        .HasColumnType("text");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)");
+                        .HasColumnType("text");
 
                     b.Property<Guid>("OwnerId")
                         .HasColumnType("uuid");
@@ -379,7 +375,7 @@ namespace Clbio.Infrastructure.Migrations
                     b.ToTable("Workspaces");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.WorkspaceMember", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.WorkspaceMember", b =>
                 {
                     b.Property<Guid>("WorkspaceId")
                         .HasColumnType("uuid");
@@ -419,20 +415,28 @@ namespace Clbio.Infrastructure.Migrations
                     b.ToTable("WorkspaceMembers");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.Attachment", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.Attachment", b =>
                 {
-                    b.HasOne("Clbio.Domain.Entities.TaskItem", "Task")
+                    b.HasOne("Clbio.Domain.Entities.V1.TaskItem", "Task")
                         .WithMany("Attachments")
                         .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
+                    b.HasOne("Clbio.Domain.Entities.V1.User", "UploadedBy")
+                        .WithMany()
+                        .HasForeignKey("UploadedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
                     b.Navigation("Task");
+
+                    b.Navigation("UploadedBy");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.Board", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.Board", b =>
                 {
-                    b.HasOne("Clbio.Domain.Entities.Workspace", "Workspace")
+                    b.HasOne("Clbio.Domain.Entities.V1.Workspace", "Workspace")
                         .WithMany("Boards")
                         .HasForeignKey("WorkspaceId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -441,9 +445,9 @@ namespace Clbio.Infrastructure.Migrations
                     b.Navigation("Workspace");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.Column", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.Column", b =>
                 {
-                    b.HasOne("Clbio.Domain.Entities.Board", "Board")
+                    b.HasOne("Clbio.Domain.Entities.V1.Board", "Board")
                         .WithMany("Columns")
                         .HasForeignKey("BoardId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -452,15 +456,15 @@ namespace Clbio.Infrastructure.Migrations
                     b.Navigation("Board");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.Comment", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.Comment", b =>
                 {
-                    b.HasOne("Clbio.Domain.Entities.User", "Author")
+                    b.HasOne("Clbio.Domain.Entities.V1.User", "Author")
                         .WithMany("Comments")
                         .HasForeignKey("AuthorId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Clbio.Domain.Entities.TaskItem", "Task")
+                    b.HasOne("Clbio.Domain.Entities.V1.TaskItem", "Task")
                         .WithMany("Comments")
                         .HasForeignKey("TaskId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -471,9 +475,9 @@ namespace Clbio.Infrastructure.Migrations
                     b.Navigation("Task");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.Notification", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.Notification", b =>
                 {
-                    b.HasOne("Clbio.Domain.Entities.User", "User")
+                    b.HasOne("Clbio.Domain.Entities.V1.User", "User")
                         .WithMany("Notifications")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -482,14 +486,14 @@ namespace Clbio.Infrastructure.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.TaskItem", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.TaskItem", b =>
                 {
-                    b.HasOne("Clbio.Domain.Entities.User", "Assignee")
+                    b.HasOne("Clbio.Domain.Entities.V1.User", "Assignee")
                         .WithMany("AssignedTasks")
                         .HasForeignKey("AssigneeId")
                         .OnDelete(DeleteBehavior.Restrict);
 
-                    b.HasOne("Clbio.Domain.Entities.Column", "Column")
+                    b.HasOne("Clbio.Domain.Entities.V1.Column", "Column")
                         .WithMany("Tasks")
                         .HasForeignKey("ColumnId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -500,9 +504,9 @@ namespace Clbio.Infrastructure.Migrations
                     b.Navigation("Column");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.Workspace", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.Workspace", b =>
                 {
-                    b.HasOne("Clbio.Domain.Entities.User", "Owner")
+                    b.HasOne("Clbio.Domain.Entities.V1.User", "Owner")
                         .WithMany()
                         .HasForeignKey("OwnerId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -511,15 +515,15 @@ namespace Clbio.Infrastructure.Migrations
                     b.Navigation("Owner");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.WorkspaceMember", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.WorkspaceMember", b =>
                 {
-                    b.HasOne("Clbio.Domain.Entities.User", "User")
+                    b.HasOne("Clbio.Domain.Entities.V1.User", "User")
                         .WithMany("WorkspaceMemberships")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.HasOne("Clbio.Domain.Entities.Workspace", "Workspace")
+                    b.HasOne("Clbio.Domain.Entities.V1.Workspace", "Workspace")
                         .WithMany("Members")
                         .HasForeignKey("WorkspaceId")
                         .OnDelete(DeleteBehavior.Restrict)
@@ -530,24 +534,24 @@ namespace Clbio.Infrastructure.Migrations
                     b.Navigation("Workspace");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.Board", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.Board", b =>
                 {
                     b.Navigation("Columns");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.Column", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.Column", b =>
                 {
                     b.Navigation("Tasks");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.TaskItem", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.TaskItem", b =>
                 {
                     b.Navigation("Attachments");
 
                     b.Navigation("Comments");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.User", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.User", b =>
                 {
                     b.Navigation("AssignedTasks");
 
@@ -558,7 +562,7 @@ namespace Clbio.Infrastructure.Migrations
                     b.Navigation("WorkspaceMemberships");
                 });
 
-            modelBuilder.Entity("Clbio.Domain.Entities.Workspace", b =>
+            modelBuilder.Entity("Clbio.Domain.Entities.V1.Workspace", b =>
                 {
                     b.Navigation("Boards");
 

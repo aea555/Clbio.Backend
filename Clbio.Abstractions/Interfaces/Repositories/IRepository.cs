@@ -1,4 +1,4 @@
-﻿using Clbio.Domain.Entities.Base;
+﻿using Clbio.Domain.Entities.V1.Base;
 using System.Linq.Expressions;
 
 namespace Clbio.Abstractions.Interfaces.Repositories

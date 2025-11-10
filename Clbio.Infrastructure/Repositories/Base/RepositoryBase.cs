@@ -1,5 +1,5 @@
 ﻿using Clbio.Abstractions.Interfaces.Repositories;
-using Clbio.Domain.Entities.Base;
+using Clbio.Domain.Entities.V1.Base;
 using Clbio.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
@@ -12,7 +12,7 @@ namespace Clbio.Infrastructure.Repositories.Base
         protected readonly DbSet<T> _dbSet = context.Set<T>();
 
         public virtual async Task<IEnumerable<T>> GetAllAsync(CancellationToken ct = default)
-            => await _dbSet.AsNoTracking().ToListAsync();
+            => await _dbSet.AsNoTracking().ToListAsync(cancellationToken: ct);
 
         public async Task<(IEnumerable<T> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, CancellationToken ct = default)
         {
@@ -30,14 +30,14 @@ namespace Clbio.Infrastructure.Repositories.Base
         public IQueryable<T> Query() => _dbSet.AsQueryable();
 
         public virtual async Task<T?> GetByIdAsync(Guid id, CancellationToken ct = default)
-            => await _dbSet.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id);
+            => await _dbSet.AsNoTracking().FirstOrDefaultAsync(e => e.Id == id, cancellationToken: ct);
 
         public virtual async Task<IEnumerable<T>> FindAsync(Expression<Func<T, bool>> predicate, CancellationToken ct = default)
-            => await _dbSet.AsNoTracking().Where(predicate).ToListAsync();
+            => await _dbSet.AsNoTracking().Where(predicate).ToListAsync(cancellationToken: ct);
 
         public virtual async Task<T> AddAsync(T entity, CancellationToken ct = default)
         {
-            await _dbSet.AddAsync(entity);
+            await _dbSet.AddAsync(entity, ct);
             return entity;
         }
 

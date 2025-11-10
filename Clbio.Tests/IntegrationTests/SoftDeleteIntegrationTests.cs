@@ -1,4 +1,4 @@
-﻿using Clbio.Domain.Entities;
+﻿using Clbio.Domain.Entities.V1;
 using Clbio.Tests.IntegrationTests.Base;
 using Microsoft.EntityFrameworkCore;
 
