@@ -93,6 +93,10 @@ namespace Clbio.Infrastructure.Data
         public DbSet<TaskItem> Tasks { get; set; } = null!;
         public DbSet<Comment> Comments { get; set; } = null!;
         public DbSet<Notification> Notifications { get; set; } = null!;
-
+        public DbSet<Attachment> Attachments { get; set; } = null!;
+        public DbSet<ActivityLog> ActivityLog { get; set; } = null!;
+        public DbSet<PermissionEntity> Permissions { get; set; } = null!;
+        public DbSet<RoleEntity> Roles { get; set; } = null!;
+        public DbSet<RolePermissionEntity> RolePermissions { get; set; } = null!;
     }
 }

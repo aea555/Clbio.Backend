@@ -9,6 +9,7 @@ var builder = WebApplication.CreateBuilder(args)
 var app = builder.Build();
 
 app.ApplyMigrations();
+await app.AddRolePermissionSeederAsync();
 
 //security and middlewares
 app.UseCors("AllowFrontendDev");

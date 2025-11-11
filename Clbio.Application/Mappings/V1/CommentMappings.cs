@@ -13,12 +13,6 @@ namespace Clbio.Application.Mappings.V1
                 .ForMember(dest => dest.Task, opt => opt.Ignore())
                 .ForMember(dest => dest.Author, opt => opt.Ignore());
 
-            CreateMap<UpdateCommentDto, Comment>()
-                .ForMember(dest => dest.TaskId, opt => opt.Ignore())
-                .ForMember(dest => dest.AuthorId, opt => opt.Ignore())
-                .ForMember(dest => dest.Task, opt => opt.Ignore())
-                .ForMember(dest => dest.Author, opt => opt.Ignore());
-
             CreateMap<Comment, ReadCommentDto>()
                 .ForMember(dest => dest.AuthorDisplayName, opt => opt.MapFrom(src => src.Author.DisplayName))
                 .ForMember(dest => dest.AuthorAvatarUrl, opt => opt.MapFrom(src => src.Author.AvatarUrl));
