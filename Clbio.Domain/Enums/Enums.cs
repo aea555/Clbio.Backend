@@ -136,6 +136,12 @@ namespace Clbio.Domain.Enums
         [Description("Mark task as completed.")]
         MarkTaskAsComplete,
 
+        [Description("Mark task as reopened.")]
+        ReopenTask,
+
+        [Description("Disapprove a task.")]
+        DisapproveTask,
+
         [Description("Delete tasks.")]
         DeleteTask,
 
@@ -176,11 +182,11 @@ namespace Clbio.Domain.Enums
     #region v1.0 - Task Lifecycle
 
     /// <summary>
-    /// v1.0 - Represents the lifecycle states of a task.
+    /// v1.0 - Represents the lifecycle states of an active task.
     /// </summary>
-    public enum TaskStatus
+    public enum TaskProgressStatus
     {
-        [Description("Task has been assigned to a user.")]
+        [Description("Task has been assigned but not yet acknowledged.")]
         Assigned = 0,
 
         [Description("Assignee has acknowledged the task.")]
@@ -190,13 +196,22 @@ namespace Clbio.Domain.Enums
         InProgress = 2,
 
         [Description("Task is ready for review or approval.")]
-        ReadyForReview = 3,
+        ReadyForReview = 3
+    }
+
+    /// <summary>
+    /// v1.0 - Represents the completion status of a task.
+    /// </summary>
+    public enum TaskCompletionStatus
+    {
+        [Description("Task is still active.")]
+        Active = 0,
 
         [Description("Task has been completed successfully.")]
-        Complete = 4,
+        Completed = 1,
 
-        [Description("Task has been reopened after completion.")]
-        Reopened = 5
+        [Description("Task was reopened after completion.")]
+        Reopened = 2
     }
 
     #endregion

@@ -1,4 +1,5 @@
 ﻿using Clbio.Application.DTOs.V1.Base;
+using Clbio.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
 
 namespace Clbio.Application.DTOs.V1.TaskItem
@@ -21,5 +22,10 @@ namespace Clbio.Application.DTOs.V1.TaskItem
         public Guid ColumnId { get; set; }
 
         public Guid? AssigneeId { get; set; }
+
+        public TaskProgressStatus? ProgressStatus { get; set; }
+
+        // Requires right privileges
+        public TaskCompletionStatus? CompletionStatus { get; set; }
     }
 }

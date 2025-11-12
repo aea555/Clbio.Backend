@@ -42,6 +42,8 @@ namespace Clbio.Domain.Extensions
             Permission.CommentOnTask,
             Permission.UpdateTaskStatus,
             Permission.MarkTaskAsComplete,
+            Permission.DisapproveTask,
+            Permission.ReopenTask,
             Permission.DeleteTask,
 
             // Member management
@@ -89,6 +91,9 @@ namespace Clbio.Domain.Extensions
             Permission.CommentOnTask,
             Permission.UpdateTaskStatus,
             Permission.MarkTaskAsComplete,
+            Permission.DisapproveTask,
+            Permission.ReopenTask,
+            Permission.DeleteTask,
 
             Permission.ViewMember,
             Permission.AddMember,

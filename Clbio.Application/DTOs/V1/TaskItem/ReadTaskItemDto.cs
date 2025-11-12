@@ -1,4 +1,5 @@
 ﻿using Clbio.Application.DTOs.V1.Base;
+using Clbio.Domain.Enums;
 
 namespace Clbio.Application.DTOs.V1.TaskItem
 {
@@ -13,6 +14,8 @@ namespace Clbio.Application.DTOs.V1.TaskItem
         public Guid? AssigneeId { get; set; }
         public string? AssigneeDisplayName { get; set; }
         public string? AssigneeAvatarUrl { get; set; }
+        public TaskProgressStatus ProgressStatus { get; set; }
+        public TaskCompletionStatus CompletionStatus { get; set; }
 
         // Optional 
         public int CommentCount { get; set; }

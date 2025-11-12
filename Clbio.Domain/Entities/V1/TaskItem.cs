@@ -1,4 +1,5 @@
 ﻿using Clbio.Domain.Entities.V1.Base;
+using Clbio.Domain.Enums;
 
 namespace Clbio.Domain.Entities.V1
 {
@@ -13,5 +14,7 @@ namespace Clbio.Domain.Entities.V1
         public User? Assignee { get; set; }
         public ICollection<Comment> Comments { get; set; } = [];
         public ICollection<Attachment> Attachments { get; set; } = [];
+        public TaskProgressStatus ProgressStatus { get; set; } = TaskProgressStatus.Assigned;
+        public TaskCompletionStatus CompletionStatus { get; set; } = TaskCompletionStatus.Active;
     }
 }
