@@ -1,4 +1,5 @@
 ﻿using Clbio.Domain.Entities.V1.Base;
+using Clbio.Domain.Enums;
 
 namespace Clbio.Domain.Entities.V1
 {
@@ -12,5 +13,8 @@ namespace Clbio.Domain.Entities.V1
         public ICollection<TaskItem> AssignedTasks { get; set; } = [];
         public ICollection<Comment> Comments { get; set; } = [];
         public ICollection<Notification> Notifications { get; set; } = [];
+        public GlobalRole GlobalRole { get; set; } = GlobalRole.None;
+        public bool EmailVerified { get; set; } = false;
+        public DateTime? EmailVerifiedAtUtc { get; set; }
     }
 }

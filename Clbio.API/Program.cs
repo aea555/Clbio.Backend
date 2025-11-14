@@ -17,8 +17,10 @@ app.UseRateLimiter();
 app.UseApiSecurity(app.Environment);
 app.UseMiddleware<ErrorHandlerMiddleware>();
 
-//app.UseAuthentication();             
-//app.UseAuthorization();
+app.UseRouting();
+
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.MapControllers();
 

@@ -12,5 +12,4 @@
         public static ApiResponse<T> Fail(string error, string? code = null) =>
             new() { Success = false, Error = error, Code = code };
     }
-
 }

@@ -1,4 +1,5 @@
 ﻿using Clbio.Domain.Entities.V1;
+using Clbio.Domain.Entities.V1.Auth;
 using Clbio.Domain.Entities.V1.Base;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
@@ -98,5 +99,7 @@ namespace Clbio.Infrastructure.Data
         public DbSet<PermissionEntity> Permissions { get; set; } = null!;
         public DbSet<RoleEntity> Roles { get; set; } = null!;
         public DbSet<RolePermissionEntity> RolePermissions { get; set; } = null!;
+        public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+        public DbSet<EmailVerificationToken> EmailVerificationTokens { get; set; } = null!;
     }
 }

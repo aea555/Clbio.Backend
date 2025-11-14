@@ -1,5 +1,7 @@
 ﻿using Clbio.Abstractions.Interfaces.Services;
+using Clbio.Application.Interfaces;
 using Clbio.Application.Services;
+using Clbio.Application.Services.Auth;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -19,6 +21,7 @@ namespace Clbio.Application.DependencyInjection
             services.AddScoped<INotificationService, NotificationService>();
             services.AddScoped<IAttachmentService, AttachmentService>();
             services.AddScoped<IActivityLogService, ActivityLogService>();
+            services.AddScoped<IAuthService, AuthService>();
 
             return services;
         }
