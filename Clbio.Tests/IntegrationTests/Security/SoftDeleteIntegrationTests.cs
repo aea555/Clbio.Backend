@@ -2,7 +2,7 @@
 using Clbio.Tests.IntegrationTests.Base;
 using Microsoft.EntityFrameworkCore;
 
-namespace Clbio.Tests.IntegrationTests
+namespace Clbio.Tests.IntegrationTests.Security
 {
     public class SoftDeleteIntegrationTests : IntegrationTestBase
     {

@@ -101,5 +101,8 @@ namespace Clbio.Infrastructure.Data
         public DbSet<RolePermissionEntity> RolePermissions { get; set; } = null!;
         public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
         public DbSet<EmailVerificationToken> EmailVerificationTokens { get; set; } = null!;
+        public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
+        public DbSet<PasswordResetAttempt> PasswordResetAttempts { get; set; } = null!;
+        public DbSet<LoginAttempt> LoginAttempts { get; set; } = null!;
     }
 }

@@ -1,10 +1,11 @@
-﻿using FluentAssertions;
+﻿using Clbio.Tests.Utils;
+using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.Net;
 
-namespace Clbio.Tests.IntegrationTests
+namespace Clbio.Tests.IntegrationTests.Security
 {
     public class SecurityHeadersTests(TestWebAppFactory factory) : IClassFixture<TestWebAppFactory>
     {
@@ -24,8 +25,12 @@ namespace Clbio.Tests.IntegrationTests
             headers.Contains("X-Content-Type-Options").Should().BeTrue();
             headers.Contains("Referrer-Policy").Should().BeTrue();
 
-            if (!_factory.Services.GetRequiredService<IWebHostEnvironment>().IsDevelopment())
+            var env = _factory.Services.GetRequiredService<IWebHostEnvironment>();
+
+            if (!env.IsDevelopment() && !env.IsEnvironment("Testing"))
+            {
                 headers.Contains("Strict-Transport-Security").Should().BeTrue();
+            }
         }
     }
 }

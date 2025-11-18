@@ -1,7 +1,8 @@
-﻿using FluentAssertions;
+﻿using Clbio.Tests.Utils;
+using FluentAssertions;
 using System.Net;
 
-namespace Clbio.Tests.IntegrationTests
+namespace Clbio.Tests.IntegrationTests.Security
 {
     public class ForwardedHeadersTests(TestWebAppFactory factory) : IClassFixture<TestWebAppFactory>
     {

@@ -1,7 +1,7 @@
 ﻿using Clbio.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace Clbio.Tests
+namespace Clbio.Tests.Utils
 {
     public static class TestDbContextFactory
     {

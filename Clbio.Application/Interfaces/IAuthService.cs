@@ -41,5 +41,17 @@ namespace Clbio.Application.Interfaces
             Guid userId,
             CancellationToken ct = default
         );
+
+        Task<Result> ForgotPasswordAsync(
+            ForgotPasswordRequestDto dto,
+            string? ipAddress,
+            CancellationToken ct = default
+        );
+
+        Task<Result> ResetPasswordAsync(
+            ResetPasswordRequestDto dto,
+            string? ipAddress,
+            CancellationToken ct = default
+        );
     }
 }

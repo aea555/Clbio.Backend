@@ -1,8 +1,9 @@
-﻿using FluentAssertions;
+﻿using Clbio.Tests.Utils;
+using FluentAssertions;
 using System.Net;
 using System.Text.Json;
 
-namespace Clbio.Tests.IntegrationTests
+namespace Clbio.Tests.IntegrationTests.Security
 {
     public class ErrorHandlingTests(TestWebAppFactory factory) : IClassFixture<TestWebAppFactory>
     {

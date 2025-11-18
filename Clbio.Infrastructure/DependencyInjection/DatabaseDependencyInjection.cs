@@ -9,6 +9,13 @@ namespace Clbio.Infrastructure.DependencyInjection
     {
         public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration)
         {
+            var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+
+            if (env == "Testing")
+            {
+                return services;
+            }
+
             string connectionString;
 
             if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")

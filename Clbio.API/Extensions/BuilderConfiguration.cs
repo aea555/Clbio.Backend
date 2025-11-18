@@ -21,11 +21,13 @@ namespace Clbio.API.Extensions
             });
 
             // Env variable loading
-            builder.Configuration
-                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
-                .AddEnvironmentVariables();
-
+            if (!builder.Environment.IsEnvironment("Testing"))
+            {
+                builder.Configuration
+               .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+               .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+               .AddEnvironmentVariables();
+            }
             return builder;
         }
 

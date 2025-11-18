@@ -1,4 +1,5 @@
 ﻿using Clbio.Infrastructure.Data;
+using Clbio.Tests.Utils;
 
 namespace Clbio.Tests.IntegrationTests.Base
 {
@@ -16,5 +17,4 @@ namespace Clbio.Tests.IntegrationTests.Base
             TestDbContextFactory.DestroyContext(Context);
         }
     }
-
 }

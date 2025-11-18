@@ -1,5 +1,5 @@
 ﻿using Clbio.Abstractions.Interfaces.Auth;
-using Clbio.Application.Services.Auth;
+using Clbio.Infrastructure.Auth;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 

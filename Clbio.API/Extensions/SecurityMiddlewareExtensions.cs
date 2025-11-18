@@ -18,7 +18,7 @@ namespace Clbio.API.Extensions
             app.UseForwardedHeaders(forwardedHeaderOptions);
 
             // --- HTTPS & HSTS ---
-            if (!env.IsDevelopment())
+            if (!env.IsEnvironment("Testing") && !env.IsDevelopment())
             {
                 app.UseHttpsRedirection();
                 app.UseHsts();
