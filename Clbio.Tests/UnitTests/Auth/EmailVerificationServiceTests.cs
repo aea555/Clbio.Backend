@@ -39,7 +39,7 @@ public class EmailVerificationServiceTests
     {
         var user = new User { Id = Guid.NewGuid(), Email = "test@example.com", DisplayName = "Test" };
 
-        _userRepo.Setup(r => r.GetByIdAsync(user.Id, It.IsAny<CancellationToken>()))
+        _userRepo.Setup(r => r.GetByIdAsync(user.Id, false, It.IsAny<CancellationToken>()))
                  .ReturnsAsync(user);
 
         _tokenService.Setup(t => t.CreateRefreshToken())

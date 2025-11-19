@@ -215,4 +215,16 @@ namespace Clbio.Domain.Enums
     }
 
     #endregion
+
+    #region AuthProvider
+    /// <summary>
+    /// v1.0 - Distinction between local auth provider and Google auth provider
+    /// </summary>
+    public enum AuthProvider
+    {
+        Local = 0,
+        Google = 1,
+    }
+
+    #endregion
 }

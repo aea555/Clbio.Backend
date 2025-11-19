@@ -1,6 +1,7 @@
 ﻿using Clbio.Abstractions.Interfaces.Services;
 using Clbio.API.Extensions;
 using Clbio.Application.DTOs.V1.Auth;
+using Clbio.Application.DTOs.V1.Auth.External;
 using Clbio.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -43,6 +44,22 @@ namespace Clbio.API.Controllers.v1.Auth
         {
             var result = await _authService.LoginAsync(dto, GetUserAgent(), GetIp(), ct);
 
+            if (!result.Success)
+                return Unauthorized(ApiResponse<TokenResponseDto>.Fail(result.Error!, result.Code));
+
+            return Ok(ApiResponse<TokenResponseDto>.Ok(result.Value));
+        }
+
+        // ------------------------------------------------------------
+        // POST /api/auth/google
+        // ------------------------------------------------------------
+        [HttpPost("google")]
+        [AllowAnonymous]
+        public async Task<IActionResult> LoginWithGoogle(
+            [FromBody] GoogleLoginRequestDto dto,
+            CancellationToken ct)
+        {
+            var result = await _authService.LoginWithGoogleAsync(dto, GetUserAgent(), GetIp(), ct);
             if (!result.Success)
                 return Unauthorized(ApiResponse<TokenResponseDto>.Fail(result.Error!, result.Code));
 

@@ -7,7 +7,7 @@
         Task<bool> IsIpThrottled(string? ip, CancellationToken ct = default);
 
         Task LogResetAttempt(string? email, bool success, string? ip, CancellationToken ct = default);
-        Task LogLoginAttempt(string email, bool success, string? ip, CancellationToken ct = default);
+        Task LogLoginAttempt(string? email, bool success, string? ip, CancellationToken ct = default);
     }
 
 }

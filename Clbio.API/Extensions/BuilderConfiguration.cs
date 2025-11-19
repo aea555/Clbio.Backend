@@ -47,6 +47,10 @@ namespace Clbio.API.Extensions
                     .ValidateDataAnnotations()
                     .ValidateOnStart();
 
+            // google client config
+            builder.Services.Configure<GoogleAuthSettings>(
+            builder.Configuration.GetSection("Auth:Google:ClientId"));
+
             // add services
             builder.Services
                 .AddOpenApi()

@@ -2,6 +2,7 @@
 using Clbio.Application.Interfaces;
 using Clbio.Application.Services;
 using Clbio.Application.Services.Auth;
+using Clbio.Application.Services.Auth.External;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -26,6 +27,7 @@ namespace Clbio.Application.DependencyInjection
             services.AddScoped<IEmailVerificationService, EmailVerificationService>();
             services.AddScoped<IPasswordResetService, PasswordResetService>();
             services.AddScoped<ITokenFactoryService, TokenFactoryService>();
+            services.AddScoped<IGoogleAuthService, GoogleAuthService>();
 
             return services;
         }

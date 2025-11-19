@@ -35,11 +35,14 @@ namespace Clbio.Tests.UnitTests.Application
                 .Returns(mockBoardRepo.Object);
 
             mockWorkspaceRepo
-                .Setup(r => r.GetByIdAsync(workspaceId, It.IsAny<CancellationToken>()))
+                .Setup(r => r.GetByIdAsync(workspaceId, false, It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new Workspace { Id = workspaceId });
 
             mockBoardRepo
-                .Setup(r => r.FindAsync(It.IsAny<Expression<Func<Board, bool>>>(), It.IsAny<CancellationToken>()))
+                .Setup(r => r.FindAsync(
+                    It.IsAny<Expression<Func<Board, bool>>>(),
+                    It.IsAny<bool>(),                 // match tracked param
+                    It.IsAny<CancellationToken>()))
                 .ReturnsAsync(boards);
 
             var service = new WorkspaceService(mockUow.Object, mockBoardService.Object);

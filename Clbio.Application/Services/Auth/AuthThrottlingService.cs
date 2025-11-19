@@ -28,7 +28,7 @@ namespace Clbio.Application.Services.Auth
 
             var attempts = await _loginRepo.FindAsync(
                 x => x.Email == email && !x.Succeeded && x.CreatedAt >= cutoff,
-                ct);
+                false, ct);
 
             return attempts.Count() >= max;
         }
@@ -45,7 +45,7 @@ namespace Clbio.Application.Services.Auth
 
             var attempts = await _resetRepo.FindAsync(
                 a => a.Email == email && a.AttemptedAtUtc >= since,
-                ct);
+                false, ct);
 
             return attempts.Count() >= maxAttempts;
         }
@@ -65,7 +65,7 @@ namespace Clbio.Application.Services.Auth
 
             var attempts = await _resetRepo.FindAsync(
                 a => a.IpAddress == ip && a.AttemptedAtUtc >= since,
-                ct);
+                false, ct);
 
             return attempts.Count() >= maxAttempts;
         }
@@ -85,7 +85,7 @@ namespace Clbio.Application.Services.Auth
             await _uow.SaveChangesAsync(ct);
         }
 
-        public async Task LogLoginAttempt(string email, bool success, string? ip, CancellationToken ct = default)
+        public async Task LogLoginAttempt(string? email, bool success, string? ip, CancellationToken ct = default)
         {
             await _loginRepo.AddAsync(new LoginAttempt
             {

@@ -16,8 +16,8 @@ namespace Clbio.Application.Services
         public override Task<Result> DeleteAsync(Guid id, CancellationToken ct = default) =>
             SafeExecution.ExecuteSafeAsync(async () =>
             {
-                var column = await Repo<Column>().GetByIdAsync(id, ct) ?? throw new InvalidOperationException("Column not found");
-                var tasks = await Repo<TaskItem>().FindAsync(t => t.ColumnId == id, ct);
+                var column = await Repo<Column>().GetByIdAsync(id, false, ct) ?? throw new InvalidOperationException("Column not found");
+                var tasks = await Repo<TaskItem>().FindAsync(t => t.ColumnId == id, true, ct);
                 foreach (var task in tasks)
                     await _taskService.DeleteAsync(task.Id, ct);
 

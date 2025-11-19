@@ -111,13 +111,13 @@ public sealed class TokenFactoryService(
                 r => r.TokenHash == tokenHash &&
                      r.RevokedUtc == null &&
                      r.ExpiresUtc > now,
-                ct)).FirstOrDefault();
+                true, ct)).FirstOrDefault();
 
             if (rt is null)
                 return Result<TokenResponseDto>.Fail("Refresh token invalid or expired.");
 
             // 3) Load user
-            var user = await _userRepo.GetByIdAsync(rt.UserId, ct);
+            var user = await _userRepo.GetByIdAsync(rt.UserId, false, ct);
             if (user is null)
                 return Result<TokenResponseDto>.Fail("User not found.");
 
@@ -147,7 +147,7 @@ public sealed class TokenFactoryService(
             var now = DateTime.UtcNow;
             var tokens = await _refreshRepo.FindAsync(
                 r => r.UserId == userId && r.RevokedUtc == null && r.ExpiresUtc > now,
-                ct);
+                true, ct);
 
             foreach (var t in tokens)
                 t.RevokedUtc = now;

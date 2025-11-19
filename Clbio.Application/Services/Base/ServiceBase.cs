@@ -37,7 +37,7 @@ namespace Clbio.Application.Services.Base
             }, _logger, "GET_PAGED_FAILED");
 
         public virtual Task<Result<T?>> GetByIdAsync(Guid id, CancellationToken ct = default) =>
-            SafeExecution.ExecuteSafeAsync(() => _repository.GetByIdAsync(id, ct), _logger, "GET_BY_ID_FAILED");
+            SafeExecution.ExecuteSafeAsync(() => _repository.GetByIdAsync(id, true, ct), _logger, "GET_BY_ID_FAILED");
 
         public virtual Task<Result<T>> CreateAsync(T entity, CancellationToken ct = default) =>
             SafeExecution.ExecuteSafeAsync(async () =>

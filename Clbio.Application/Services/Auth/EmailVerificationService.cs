@@ -34,7 +34,7 @@ public sealed class EmailVerificationService(
     {
         try
         {
-            var user = await _userRepo.GetByIdAsync(userId, ct);
+            var user = await _userRepo.GetByIdAsync(userId, false, ct);
             if (user is null)
                 return Result.Fail("User not found.");
 
@@ -109,12 +109,12 @@ public sealed class EmailVerificationService(
                 x => x.TokenHash == tokenHash &&
                      !x.Used &&
                      x.ExpiresUtc > now,
-                ct)).FirstOrDefault();
+                false, ct)).FirstOrDefault();
 
             if (stored is null)
                 return Result.Fail("Invalid or expired verification token.");
 
-            var user = await _userRepo.GetByIdAsync(stored.UserId, ct);
+            var user = await _userRepo.GetByIdAsync(stored.UserId, true, ct);
             if (user is null)
                 return Result.Fail("User not found.");
 

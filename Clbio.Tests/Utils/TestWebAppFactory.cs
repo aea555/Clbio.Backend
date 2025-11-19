@@ -1,4 +1,5 @@
 ﻿using Clbio.Abstractions.Interfaces.Services;
+using Clbio.Application.Interfaces;
 using Clbio.Infrastructure.Data;
 using Clbio.Tests.Helpers;
 using Microsoft.AspNetCore.Hosting;
@@ -7,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 
 namespace Clbio.Tests.Utils
@@ -21,7 +23,7 @@ namespace Clbio.Tests.Utils
             {
                 configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
                 {
-                    ["Auth:Jwt:Key"] = "THIS_IS_A_DETERMINISTIC_TEST_KEY_12345678901234567890",
+                    ["Auth:Jwt:Key"] = "1234567890123456789012345678901234567890",
                     ["Auth:Jwt:Issuer"] = "http://test.local",
                     ["Auth:Jwt:Audience"] = "http://test.local",
                     ["Auth:Jwt:AccessTokenMinutes"] = "15",
@@ -40,32 +42,31 @@ namespace Clbio.Tests.Utils
                     ["App:BaseUrl"] = "http://test.local",
 
                     ["Email:FromEmail"] = "test@clbio.org",
-                    ["Email:FromName"] = "Test",
+                    ["Email:FromName"] = "Test Sender",
                 });
             });
 
             builder.ConfigureServices(services =>
             {
-                var emailSenderDescriptor = services.SingleOrDefault(d => d.ServiceType == typeof(IEmailSender));
-                if (emailSenderDescriptor != null)
-                    services.Remove(emailSenderDescriptor);
+                services.RemoveAll<IEmailSender>();
+                services.RemoveAll<IGoogleAuthService>();
+                services.RemoveAll<AppDbContext>();
+                services.RemoveAll<IDbContextOptionsConfiguration<AppDbContext>>();
 
                 services.AddSingleton<IEmailSender, FakeEmailSender>();
 
-                services.Remove(
-                    services.SingleOrDefault(d => d.ServiceType == typeof(IDbContextOptionsConfiguration<AppDbContext>))
-                );
-
-                services.AddDbContext<AppDbContext>(options =>
+                services.AddDbContext<AppDbContext>((sp, options) =>
                 {
                     options.UseInMemoryDatabase("ApiTestDb");
+                    options.UseApplicationServiceProvider(sp);
                 });
-                var sp = services.BuildServiceProvider();
 
+                var sp = services.BuildServiceProvider();
                 using var scope = sp.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 db.Database.EnsureCreated();
             });
         }
     }
+
 }

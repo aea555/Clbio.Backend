@@ -32,7 +32,7 @@ public class AuthThrottlingServiceTests
         _loginRepo
             .Setup(r => r.FindAsync(
                 It.IsAny<Expression<Func<LoginAttempt, bool>>>(),
-                It.IsAny<CancellationToken>()
+                false, It.IsAny<CancellationToken>()
             ))
 
             .ReturnsAsync(
@@ -55,7 +55,7 @@ public class AuthThrottlingServiceTests
         _loginRepo
             .Setup(r => r.FindAsync(
                 It.IsAny<Expression<Func<LoginAttempt, bool>>>(),
-                It.IsAny<CancellationToken>()
+                false, It.IsAny<CancellationToken>()
             ))
             .ReturnsAsync(
             [

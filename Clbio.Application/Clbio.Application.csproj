@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="AutoMapper" Version="15.1.0" />
+    <PackageReference Include="Google.Apis.Auth" Version="1.72.0" />
     <PackageReference Include="Microsoft.AspNetCore.Cryptography.KeyDerivation" Version="9.0.10" />
     <PackageReference Include="Microsoft.AspNetCore.Http.Abstractions" Version="2.3.0" />
     <PackageReference Include="Microsoft.AspNetCore.WebUtilities" Version="9.0.11" />
@@ -21,6 +22,10 @@
     <ProjectReference Include="..\Clbio.Domain\Clbio.Domain.csproj" />
     <ProjectReference Include="..\Clbio.Abstractions\Clbio.Abstractions.csproj" />
     <ProjectReference Include="..\Clbio.Shared\Clbio.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Services\Auth\External\" />
   </ItemGroup>
 
 </Project>

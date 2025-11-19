@@ -44,7 +44,7 @@ namespace Clbio.Application.Services.Auth
         {
             try
             {
-                var users = await _userRepo.FindAsync(u => u.Email == dto.Email, ct);
+                var users = await _userRepo.FindAsync(u => u.Email == dto.Email, false, ct);
                 var user = users.FirstOrDefault();
 
                 if (user is null)
@@ -158,7 +158,7 @@ namespace Clbio.Application.Services.Auth
                     x => x.TokenHash == tokenHash &&
                          !x.Used &&
                          x.ExpiresUtc > now,
-                    ct)).FirstOrDefault();
+                    true, ct)).FirstOrDefault();
 
                 if (token is null)
                 {
@@ -167,7 +167,7 @@ namespace Clbio.Application.Services.Auth
                 }
 
                 // 3) Load user
-                var user = await _userRepo.GetByIdAsync(token.UserId, ct);
+                var user = await _userRepo.GetByIdAsync(token.UserId, true, ct);
                 if (user is null)
                 {
                     await _throttling.LogResetAttempt(null, false, ipAddress, ct);
@@ -200,7 +200,7 @@ namespace Clbio.Application.Services.Auth
                     rt => rt.UserId == user.Id &&
                           rt.RevokedUtc == null &&
                           rt.ExpiresUtc > now,
-                    ct);
+                    true, ct);
 
                 foreach (var rt in refreshTokens)
                     rt.RevokedUtc = now;
