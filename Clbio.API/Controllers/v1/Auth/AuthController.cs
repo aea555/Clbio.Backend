@@ -142,14 +142,14 @@ namespace Clbio.API.Controllers.v1.Auth
         }
 
         // ------------------------------------------------------------
-        // POST /api/auth/verify-email
+        // GET /api/auth/verify-email?token=token123
         // Verify email by hashing the token from the URL, find the stored record with that hash, check if it not expired or used
         // ------------------------------------------------------------
-        [HttpPost("verify-email")]
+        [HttpGet("verify-email")]
         [AllowAnonymous]
-        public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailRequestDto req, CancellationToken ct)
+        public async Task<IActionResult> VerifyEmail([FromQuery] string token, CancellationToken ct)
         {
-            var result = await _emailVerificationService.VerifyEmailAsync(req.Token, ct);
+            var result = await _emailVerificationService.VerifyEmailAsync(token, ct);
 
             if (!result.Success)
                 return BadRequest(ApiResponse<object>.Fail(result.Error!, result.Code));

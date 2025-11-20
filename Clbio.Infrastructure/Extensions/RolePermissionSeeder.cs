@@ -21,7 +21,8 @@ namespace Clbio.Infrastructure.Extensions
                     {
                         Type = perm,
                         DisplayName = perm.GetDescription(),
-                        Description = $"Auto-seeded from Permission enum ({perm})."
+                        Description = $"Auto-seeded from Permission enum ({perm}).",
+                        Scope = PermissionMetadata.Scopes[perm]
                     });
                 }
             }
@@ -74,6 +75,13 @@ namespace Clbio.Infrastructure.Extensions
 
                 foreach (var perm in mappedPermissions)
                 {
+                    if (role.WorkspaceRole != null &&
+                    PermissionMetadata.Scopes[perm] == PermissionScope.Global)
+                    {
+                        // Skip global permissions for workspace roles
+                        continue;
+                    }
+
                     var permissionEntity = allPerms.First(p => p.Type == perm);
 
                     bool exists = await db.RolePermissions.AnyAsync(

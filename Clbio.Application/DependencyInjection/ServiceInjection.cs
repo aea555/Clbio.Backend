@@ -28,6 +28,7 @@ namespace Clbio.Application.DependencyInjection
             services.AddScoped<IPasswordResetService, PasswordResetService>();
             services.AddScoped<ITokenFactoryService, TokenFactoryService>();
             services.AddScoped<IGoogleAuthService, GoogleAuthService>();
+            services.AddScoped<IUserPermissionService, UserPermissionService>();
 
             return services;
         }

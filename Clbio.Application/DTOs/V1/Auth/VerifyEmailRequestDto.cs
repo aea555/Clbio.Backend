@@ -3,6 +3,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Clbio.Application.DTOs.V1.Auth
 {
+    // DEPRECATED
     public class VerifyEmailRequestDto : RequestDtoBase
     {
         [Required]

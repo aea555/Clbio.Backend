@@ -5,13 +5,23 @@ namespace Clbio.Domain.Extensions
 {
     public static class RolePermissionMap
     {
+        private static ReadOnlyCollection<Permission> FilterWorkspaceScoped(IEnumerable<Permission> perms)
+        {
+            return Array.AsReadOnly(
+                perms.Where(p =>
+                    PermissionMetadata.Scopes[p] == PermissionScope.Workspace ||
+                    PermissionMetadata.Scopes[p] == PermissionScope.User
+                ).ToArray()
+            );
+        }
+
         // Global Admins have everything
         public static readonly ReadOnlyCollection<Permission> GlobalAdminPermissions =
             Array.AsReadOnly(Enum.GetValues<Permission>());
 
         // Workspace Owners have nearly everything except true system-wide privileges
         public static readonly ReadOnlyCollection<Permission> WorkspaceOwnerPermissions =
-            Array.AsReadOnly(
+            FilterWorkspaceScoped(
             [
             // Workspace
             Permission.ViewWorkspace,
@@ -68,7 +78,7 @@ namespace Clbio.Domain.Extensions
 
         // Privileged members: can manage tasks and members but not delete/archival actions
         public static readonly ReadOnlyCollection<Permission> PrivilegedMemberPermissions =
-            Array.AsReadOnly(
+            FilterWorkspaceScoped(
             [
             Permission.ViewWorkspace,
             Permission.ManageWorkspace,
@@ -109,7 +119,7 @@ namespace Clbio.Domain.Extensions
 
         // Regular members: limited to their own work
         public static readonly ReadOnlyCollection<Permission> MemberPermissions =
-            Array.AsReadOnly(
+            FilterWorkspaceScoped(
             [
             Permission.ViewWorkspace,
 

@@ -45,6 +45,17 @@ namespace Clbio.Domain.Enums
 
     #endregion
 
+    #region v1.0 - PermissionScope
+    /// <summary>
+    /// v1.0 - Defines the scopes of permissions.
+    /// </summary>
+    public enum PermissionScope
+    {
+        Global,     // Admin-only
+        Workspace,  // Everything that depends on a workspace
+        User        // User-specific things like notifications
+    }
+
     #region v1.0 - Permissions
 
     /// <summary>

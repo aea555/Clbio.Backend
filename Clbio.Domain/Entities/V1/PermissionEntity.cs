@@ -8,5 +8,6 @@ namespace Clbio.Domain.Entities.V1
         public Permission Type { get; set; }
         public string DisplayName { get; set; } = null!;
         public string? Description { get; set; }
+        public PermissionScope Scope { get; set; }
     }
 }
