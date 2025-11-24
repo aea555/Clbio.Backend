@@ -1,4 +1,5 @@
 ﻿using Clbio.Abstractions.Interfaces;
+using Clbio.Abstractions.Interfaces.Cache;
 using Clbio.Abstractions.Interfaces.Repositories;
 using Clbio.Abstractions.Interfaces.Services;
 using Clbio.Domain.Entities.V1;
@@ -10,9 +11,10 @@ using Microsoft.Extensions.Logging;
 
 namespace Clbio.Application.Services.Auth
 {
-    public sealed class UserPermissionService(IUnitOfWork uow, ILogger<UserPermissionService>? logger = null) : IUserPermissionService
+    public sealed class UserPermissionService(IUnitOfWork uow, ICacheService cache, ILogger<UserPermissionService>? logger = null) : IUserPermissionService
     {
         private readonly IRepository<User> _userRepo = uow.Repository<User>();
+        private readonly ICacheService _cache = cache;
         private readonly IRepository<WorkspaceMember> _workspaceMemberRepo = uow.Repository<WorkspaceMember>();
         private readonly IRepository<RolePermissionEntity> _rolePermissionRepo = uow.Repository<RolePermissionEntity>();
         private readonly IRepository<Workspace> _workspaceRepo = uow.Repository<Workspace>();
@@ -27,7 +29,12 @@ namespace Clbio.Application.Services.Auth
         {
             try
             {
-                var user = await _userRepo.GetByIdAsync(userId, false, ct);
+                var user = await _cache.GetOrSetAsync(
+                    key: $"user:{userId}",
+                    factory: async () => await _userRepo.GetByIdAsync(userId, false, ct),
+                    expiration: TimeSpan.FromMinutes(10)
+                );
+
                 if (user is null)
                     return Result<bool>.Fail("User not found.");
 
@@ -50,26 +57,45 @@ namespace Clbio.Application.Services.Auth
                     return Result<bool>.Ok(false);
 
                 // Validate workspace exists
-                var workspace = await _workspaceRepo.GetByIdAsync(workspaceId.Value, false, ct);
+                var workspace = await _cache.GetOrSetAsync(
+                    key: $"workspace:{workspaceId}",
+                    factory: async () => await _workspaceRepo.GetByIdAsync(workspaceId.Value, false, ct),
+                    expiration: TimeSpan.FromMinutes(10)
+                );
                 if (workspace is null)
                     return Result<bool>.Fail("Workspace not found.");
 
                 // Check membership 
-                var membership = await _workspaceMemberRepo.Query()
-                    .Where(wm => wm.UserId == userId && wm.WorkspaceId == workspaceId)
-                    .FirstOrDefaultAsync(ct);
+                var membership = await _cache.GetOrSetAsync(
+                   key: $"membership:{userId}:{workspaceId}",
+                   factory: async () =>
+                   {
+                       return await _workspaceMemberRepo.Query()
+                           .Where(wm => wm.UserId == userId && wm.WorkspaceId == workspaceId)
+                           .FirstOrDefaultAsync(ct);
+                   },
+                   expiration: TimeSpan.FromMinutes(10)
+                );
 
                 if (membership is null)
                     return Result<bool>.Ok(false); // user not in workspace
 
                 var userWorkspaceRole = membership.Role;
 
-                // Load permissions assigned to that workspace role
-                bool has = await _rolePermissionRepo.Query()
-                    .Where(rp =>
-                        rp.Permission.Type == permission &&
-                        rp.Role.WorkspaceRole == userWorkspaceRole)
-                    .AnyAsync(ct);
+                // Cache permissions for workspace role
+                var rolePermissions = await _cache.GetOrSetAsync(
+                    key: $"roleperms:workspace:{userWorkspaceRole}",
+                    factory: async () =>
+                    {
+                        return await _rolePermissionRepo.Query()
+                            .Where(rp => rp.Role.WorkspaceRole == userWorkspaceRole)
+                            .Select(rp => rp.Permission.Type)
+                            .ToListAsync(ct);
+                    },
+                    expiration: TimeSpan.FromMinutes(15)
+                );
+
+                bool has = rolePermissions.Contains(permission);
 
                 return Result<bool>.Ok(has);
             }

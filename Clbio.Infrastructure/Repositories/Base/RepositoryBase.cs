@@ -14,11 +14,21 @@ namespace Clbio.Infrastructure.Repositories.Base
         public virtual async Task<IEnumerable<T>> GetAllAsync(CancellationToken ct = default)
             => await _dbSet.AsNoTracking().ToListAsync(cancellationToken: ct);
 
-        public async Task<(IEnumerable<T> Items, int TotalCount)> GetPagedAsync(int page, int pageSize, CancellationToken ct = default)
+        public async Task<(IEnumerable<T> Items, int TotalCount)> GetPagedAsync(
+            int page, int pageSize, Func<IQueryable<T>,
+            IOrderedQueryable<T>> orderBy,
+            bool tracked = false, CancellationToken ct = default)
         {
-            var totalCount = await _dbSet.CountAsync(ct);
-            var items = await _dbSet
-                .AsNoTracking()
+            IQueryable<T> query = _dbSet;
+
+            if (!tracked)
+                query = query.AsNoTracking();
+
+            query = orderBy(query);
+
+            var totalCount = await query.CountAsync(ct);
+
+            var items = await query
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
                 .ToListAsync(ct);

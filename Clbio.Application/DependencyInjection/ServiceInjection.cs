@@ -1,8 +1,10 @@
-﻿using Clbio.Abstractions.Interfaces.Services;
+﻿using Clbio.Abstractions.Interfaces.Cache;
+using Clbio.Abstractions.Interfaces.Services;
 using Clbio.Application.Interfaces;
 using Clbio.Application.Services;
 using Clbio.Application.Services.Auth;
 using Clbio.Application.Services.Auth.External;
+using Clbio.Application.Services.Cache;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -29,6 +31,8 @@ namespace Clbio.Application.DependencyInjection
             services.AddScoped<ITokenFactoryService, TokenFactoryService>();
             services.AddScoped<IGoogleAuthService, GoogleAuthService>();
             services.AddScoped<IUserPermissionService, UserPermissionService>();
+            services.AddScoped<ICacheService, RedisCacheService>();
+            services.AddScoped<ICacheInvalidationService, CacheInvalidationService>();
 
             return services;
         }
