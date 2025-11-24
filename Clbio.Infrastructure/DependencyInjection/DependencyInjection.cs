@@ -12,7 +12,8 @@ namespace Clbio.Infrastructure.DependencyInjection
                 .AddTokenService(configuration)
                 .AddRepositories(configuration)
                 .AddUnitOfWork(configuration)
-                .AddEmailSender(configuration);
+                .AddEmailSender(configuration)
+                .AddRedis(configuration);
 
             return services;
         }

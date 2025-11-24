@@ -33,6 +33,8 @@ namespace Clbio.Application.DependencyInjection
             services.AddScoped<IUserPermissionService, UserPermissionService>();
             services.AddScoped<ICacheService, RedisCacheService>();
             services.AddScoped<ICacheInvalidationService, CacheInvalidationService>();
+            services.AddScoped<ICacheVersionService, RedisCacheVersionService>();
+            services.AddHostedService<RedisCacheInvalidationSubscriber>();
 
             return services;
         }

@@ -13,12 +13,12 @@ namespace Clbio.Application.Extensions
         // ─────────────────────────────────────────────────────
         // WORKSPACE
         // ─────────────────────────────────────────────────────
-        public static string Workspace(Guid workspaceId)
-            => $"workspace:{workspaceId}";
+        public static string Workspace(Guid workspaceId, long version) =>
+            $"workspace:v{version}:{workspaceId}";
 
         // Membership of user inside a workspace 
-        public static string Membership(Guid userId, Guid workspaceId)
-            => $"membership:{userId}:{workspaceId}";
+        public static string Membership(Guid userId, Guid workspaceId, long version) =>
+            $"membership:v{version}:{userId}:{workspaceId}";
 
         // Workspace list per user 
         public static string UserWorkspaces(Guid userId)
@@ -27,8 +27,8 @@ namespace Clbio.Application.Extensions
         // ─────────────────────────────────────────────────────
         // ROLE & PERMISSION
         // ─────────────────────────────────────────────────────
-        public static string RolePermissions(WorkspaceRole role)
-            => $"roleperms:workspace:{role}";
+        public static string RolePermissions(WorkspaceRole role, long version) =>
+            $"roleperms:ws:v{version}:{role}";
 
         public static string GlobalRolePermissions(GlobalRole role)
             => $"roleperms:global:{role}";
@@ -39,8 +39,8 @@ namespace Clbio.Application.Extensions
         public static string Board(Guid boardId)
             => $"board:{boardId}";
 
-        public static string BoardsByWorkspace(Guid workspaceId)
-            => $"boards:ws:{workspaceId}";
+        public static string BoardsByWorkspace(Guid workspaceId, long version) =>
+            $"boards:ws:v{version}:{workspaceId}";
 
         // ─────────────────────────────────────────────────────
         // NOTIFICATIONS 
