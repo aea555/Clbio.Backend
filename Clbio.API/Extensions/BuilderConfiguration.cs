@@ -20,8 +20,33 @@ namespace Clbio.API.Extensions
                 options.FormatterName = "json";
             });
 
-            // Env variable loading
-            if (!builder.Environment.IsEnvironment("Testing"))
+            if (builder.Environment.IsEnvironment("Testing"))
+            {
+                builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Auth:Jwt:Key"] = "1234567890123456789012345678901234567890",
+                    ["Auth:Jwt:Issuer"] = "http://test.local",
+                    ["Auth:Jwt:Audience"] = "http://test.local",
+                    ["Auth:Jwt:AccessTokenMinutes"] = "15",
+                    ["Auth:Jwt:RefreshTokenDays"] = "14",
+
+                    ["Auth:Login:MaxFailedAttempts"] = "5",
+                    ["Auth:Login:WindowMinutes"] = "15",
+
+                    ["Auth:PasswordReset:TokenMinutes"] = "30",
+                    ["Auth:PasswordReset:WindowMinutes"] = "15",
+                    ["Auth:PasswordReset:MaxAttempts"] = "5",
+                    ["Auth:PasswordReset:MaxIpAttempts"] = "10",
+
+                    ["Auth:EmailVerification:TokenMinutes"] = "120",
+
+                    ["App:BaseUrl"] = "http://test.local",
+
+                    ["Email:FromEmail"] = "test@clbio.org",
+                    ["Email:FromName"] = "Test Sender",
+                });
+            }
+            else
             {
                 builder.Configuration
                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
@@ -34,6 +59,7 @@ namespace Clbio.API.Extensions
         public static WebApplicationBuilder ConfigureBuilderServices(this WebApplicationBuilder builder)
         {
             builder.Services
+                .AddJwt(builder.Configuration)
                 .AddControllers()
                 .AddJsonOptions(opts =>
                 {

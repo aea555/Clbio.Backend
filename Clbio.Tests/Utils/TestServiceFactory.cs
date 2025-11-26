@@ -28,6 +28,7 @@ public static class TestServiceFactory
 
         // Core services
         var tokenService = new TokenService(config);
+        var tokenFactoryService = new TokenFactoryService(tokenService, refreshRepo, userRepo, uow, config);
 
         var throttling = new AuthThrottlingService(
             loginAttemptRepo,
@@ -40,6 +41,7 @@ public static class TestServiceFactory
             userRepo,
             emailVerificationRepo,
             tokenService,
+            tokenFactoryService,
             emailSender,
             uow,
             config,

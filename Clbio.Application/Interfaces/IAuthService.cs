@@ -6,7 +6,7 @@ namespace Clbio.Application.Interfaces
 {
     public interface IAuthService
     {
-        Task<Result<TokenResponseDto>> RegisterAsync(
+        Task<Result> RegisterAsync(
             RegisterRequestDto dto,
             string? userAgent,
             string? ipAddress,
@@ -36,6 +36,8 @@ namespace Clbio.Application.Interfaces
 
         Task<Result> VerifyEmailAsync(
             string rawToken,
+            string? userAgent,
+            string? ipAddress,
             CancellationToken ct = default
         );
 

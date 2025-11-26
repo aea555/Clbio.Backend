@@ -25,11 +25,12 @@ public class RegisterAndLoginTests : IntegrationTestBase
         );
 
         register.Success.ShouldBeTrue(register.Error);
-        register.Value.AccessToken.ShouldNotBeNull();
-        register.Value.RefreshToken.ShouldNotBeNull();
 
         // Mark user as verified. email verification is tested separately
         var user = Context.Users.First();
+        user.Email.ShouldBe("test@example.com");
+        user.EmailVerified.ShouldBeFalse();
+
         user.EmailVerified = true;
         Context.SaveChanges();
 
@@ -45,6 +46,8 @@ public class RegisterAndLoginTests : IntegrationTestBase
         );
 
         login.Success.ShouldBeTrue(login.Error);
+
         login.Value.AccessToken.ShouldNotBeNull();
+        login.Value.RefreshToken.ShouldNotBeNull();
     }
 }

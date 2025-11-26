@@ -32,7 +32,7 @@ namespace Clbio.API.Controllers.v1.Auth
             if (!result.Success)
                 return BadRequest(ApiResponse<TokenResponseDto>.Fail(result.Error!, result.Code));
 
-            return Ok(ApiResponse<TokenResponseDto>.Ok(result.Value));
+            return Ok(ApiResponse<object>.Ok("Registration successful. Please check your email to verify your account."));
         }
 
         // ------------------------------------------------------------
@@ -149,12 +149,12 @@ namespace Clbio.API.Controllers.v1.Auth
         [AllowAnonymous]
         public async Task<IActionResult> VerifyEmail([FromQuery] string token, CancellationToken ct)
         {
-            var result = await _emailVerificationService.VerifyEmailAsync(token, ct);
+            var result = await _emailVerificationService.VerifyEmailAsync(token, GetUserAgent(), GetIp(), ct);
 
-            if (!result.Success)
+            if (!result.Success || result.Value is null)
                 return BadRequest(ApiResponse<object>.Fail(result.Error!, result.Code));
 
-            return Ok(ApiResponse<object>.Ok("Email verified."));
+            return Ok(ApiResponse<TokenResponseDto>.Ok(result.Value));
         }
 
         // !!! DEV ENDPOINT

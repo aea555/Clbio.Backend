@@ -15,36 +15,43 @@ namespace Clbio.Tests.Utils
 {
     public class TestWebAppFactory : WebApplicationFactory<Program>
     {
+        public TestWebAppFactory()
+        {
+            this.WithWebHostBuilder(builder =>
+            {
+                builder.ConfigureAppConfiguration((context, configBuilder) =>
+                {
+                    configBuilder.Sources.Clear();
+                    configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
+                    {
+                        ["Auth:Jwt:Key"] = "1234567890123456789012345678901234567890",
+                        ["Auth:Jwt:Issuer"] = "http://test.local",
+                        ["Auth:Jwt:Audience"] = "http://test.local",
+                        ["Auth:Jwt:AccessTokenMinutes"] = "15",
+                        ["Auth:Jwt:RefreshTokenDays"] = "14",
+
+                        ["Auth:Login:MaxFailedAttempts"] = "5",
+                        ["Auth:Login:WindowMinutes"] = "15",
+
+                        ["Auth:PasswordReset:TokenMinutes"] = "30",
+                        ["Auth:PasswordReset:WindowMinutes"] = "15",
+                        ["Auth:PasswordReset:MaxAttempts"] = "5",
+                        ["Auth:PasswordReset:MaxIpAttempts"] = "10",
+
+                        ["Auth:EmailVerification:TokenMinutes"] = "120",
+
+                        ["App:BaseUrl"] = "http://test.local",
+
+                        ["Email:FromEmail"] = "test@clbio.org",
+                        ["Email:FromName"] = "Test Sender",
+                    });
+                });
+            });
+        }
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing");
-
-            builder.ConfigureAppConfiguration((context, configBuilder) =>
-            {
-                configBuilder.AddInMemoryCollection(new Dictionary<string, string?>
-                {
-                    ["Auth:Jwt:Key"] = "1234567890123456789012345678901234567890",
-                    ["Auth:Jwt:Issuer"] = "http://test.local",
-                    ["Auth:Jwt:Audience"] = "http://test.local",
-                    ["Auth:Jwt:AccessTokenMinutes"] = "15",
-                    ["Auth:Jwt:RefreshTokenDays"] = "14",
-
-                    ["Auth:Login:MaxFailedAttempts"] = "5",
-                    ["Auth:Login:WindowMinutes"] = "15",
-
-                    ["Auth:PasswordReset:TokenMinutes"] = "30",
-                    ["Auth:PasswordReset:WindowMinutes"] = "15",
-                    ["Auth:PasswordReset:MaxAttempts"] = "5",
-                    ["Auth:PasswordReset:MaxIpAttempts"] = "10",
-
-                    ["Auth:EmailVerification:TokenMinutes"] = "120",
-
-                    ["App:BaseUrl"] = "http://test.local",
-
-                    ["Email:FromEmail"] = "test@clbio.org",
-                    ["Email:FromName"] = "Test Sender",
-                });
-            });
 
             builder.ConfigureServices(services =>
             {
@@ -68,5 +75,4 @@ namespace Clbio.Tests.Utils
             });
         }
     }
-
 }

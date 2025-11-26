@@ -50,7 +50,7 @@ namespace Clbio.Application.Services.Auth
         // --------------------------------------------------------------
         // REGISTER
         // --------------------------------------------------------------
-        public async Task<Result<TokenResponseDto>> RegisterAsync(
+        public async Task<Result> RegisterAsync(
             RegisterRequestDto dto,
             string? userAgent,
             string? ipAddress,
@@ -97,9 +97,7 @@ namespace Clbio.Application.Services.Auth
 
                 // Send verification email
                 await _emailVerification.SendVerificationEmailAsync(user.Id, ct);
-
-                // Issue tokens
-                return await _tokenFactory.IssueTokensAsync(user, userAgent, ipAddress, ct);
+                return Result.Ok();
             }
             catch (Exception ex)
             {
@@ -302,9 +300,10 @@ namespace Clbio.Application.Services.Auth
         // --------------------------------------------------------------
         // EMAIL VERIFICATION
         // --------------------------------------------------------------
-        public async Task<Result> VerifyEmailAsync(string rawToken, CancellationToken ct = default)
+        public async Task<Result> VerifyEmailAsync(string rawToken, string? userAgent,
+            string? ipAddress, CancellationToken ct = default)
         {
-            return await _emailVerification.VerifyEmailAsync(rawToken, ct);
+            return await _emailVerification.VerifyEmailAsync(rawToken, userAgent, ipAddress, ct);
         }
 
         // --------------------------------------------------------------

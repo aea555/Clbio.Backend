@@ -2,6 +2,8 @@
 using Clbio.Abstractions.Interfaces.Auth;
 using Clbio.Abstractions.Interfaces.Repositories;
 using Clbio.Abstractions.Interfaces.Services;
+using Clbio.Application.DTOs.V1.Auth;
+using Clbio.Application.Interfaces;
 using Clbio.Domain.Entities.V1;
 using Clbio.Domain.Entities.V1.Auth;
 using Clbio.Shared.Results;
@@ -14,6 +16,7 @@ public sealed class EmailVerificationService(
     IRepository<User> userRepo,
     IRepository<EmailVerificationToken> verificationRepo,
     ITokenService tokenService,
+    ITokenFactoryService tokenFactory,
     IEmailSender emailSender,
     IUnitOfWork uow,
     IConfiguration config,
@@ -22,6 +25,7 @@ public sealed class EmailVerificationService(
     private readonly IRepository<User> _userRepo = userRepo;
     private readonly IRepository<EmailVerificationToken> _verificationRepo = verificationRepo;
     private readonly ITokenService _tokenService = tokenService;
+    private readonly ITokenFactoryService _tokenFactory = tokenFactory;
     private readonly IEmailSender _emailSender = emailSender;
     private readonly IUnitOfWork _uow = uow;
     private readonly IConfiguration _config = config;
@@ -87,19 +91,21 @@ public sealed class EmailVerificationService(
     }
 
     // --------------------------------------------------------------------
-    // Verify email token
+    // Verify email token and issue tokens to user
     // --------------------------------------------------------------------
-    public async Task<Result> VerifyEmailAsync(string rawToken, CancellationToken ct = default)
+    public async Task<Result<TokenResponseDto>> VerifyEmailAsync(string rawToken,
+        string? userAgent,
+        string? ipAddress, CancellationToken ct = default)
     {
         try
         {
             if (string.IsNullOrWhiteSpace(rawToken))
-                return Result.Fail("Verification token is required.");
+                return Result<TokenResponseDto>.Fail("Verification token is required.");
 
             // hash raw token for lookup
             var hash = _tokenService.HashRefreshToken(rawToken);
             if (!hash.Success || string.IsNullOrWhiteSpace(hash.Value))
-                return Result.Fail("Invalid verification token.");
+                return Result<TokenResponseDto>.Fail("Invalid verification token.");
 
             var tokenHash = hash.Value!;
             var now = DateTime.UtcNow;
@@ -112,11 +118,11 @@ public sealed class EmailVerificationService(
                 false, ct)).FirstOrDefault();
 
             if (stored is null)
-                return Result.Fail("Invalid or expired verification token.");
+                return Result<TokenResponseDto>.Fail("Invalid or expired verification token.");
 
             var user = await _userRepo.GetByIdAsync(stored.UserId, true, ct);
             if (user is null)
-                return Result.Fail("User not found.");
+                return Result<TokenResponseDto>.Fail("User not found.");
 
             // Mark verified
             user.EmailVerified = true;
@@ -126,12 +132,18 @@ public sealed class EmailVerificationService(
 
             await _uow.SaveChangesAsync(ct);
 
-            return Result.Ok();
+            // issue tokens
+            var tokens = await _tokenFactory.IssueTokensAsync(user, userAgent, ipAddress, ct);
+
+            if (!tokens.Success || tokens.Value is null)
+                return Result<TokenResponseDto>.Fail("Failed to issue tokens!");
+
+            return Result<TokenResponseDto>.Ok(tokens.Value);
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "VerifyEmailAsync failed.");
-            return Result.Fail("Email verification failed.");
+            return Result<TokenResponseDto>.Fail("Email verification failed.");
         }
     }
 }

@@ -1,6 +1,7 @@
 ﻿using Clbio.Abstractions.Interfaces;
 using Clbio.Abstractions.Interfaces.Auth;
 using Clbio.Abstractions.Interfaces.Repositories;
+using Clbio.Application.Interfaces;
 using Clbio.Application.Services.Auth;
 using Clbio.Domain.Entities.V1;
 using Clbio.Domain.Entities.V1.Auth;
@@ -19,6 +20,7 @@ public class EmailVerificationServiceTests
     private readonly FakeEmailSender _emailSender = new();
     private readonly Mock<IUnitOfWork> _uow = new();
     private readonly Mock<ITokenService> _tokenService = new();
+    private readonly Mock<ITokenFactoryService> _tokenFactory = new();
     private readonly EmailVerificationService _service;
 
     public EmailVerificationServiceTests()
@@ -27,6 +29,7 @@ public class EmailVerificationServiceTests
             _userRepo.Object,
             _tokenRepo.Object,
             _tokenService.Object,
+            _tokenFactory.Object,
             _emailSender,
             _uow.Object,
             AuthTestConfig.Build(),

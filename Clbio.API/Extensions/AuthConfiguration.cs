@@ -6,14 +6,11 @@ namespace Clbio.API.Extensions
 {
     public static class AuthConfiguration
     {
-        public static IServiceCollection AddJwt(this IServiceCollection services)
+        public static IServiceCollection AddJwt(this IServiceCollection services, IConfiguration config)
         {
-            var validIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER");
-            var validAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE");
-            var secret = Environment.GetEnvironmentVariable("JWT_KEY");
-
-            if (validIssuer is null || validAudience is null || secret is null)
-                throw new Exception("Couldn't get JWT environment variables.");
+            // var validIssuer = config["Auth:Jwt:Issuer"];
+            // var validAudience = config["Auth:Jwt:Audience"];
+            var secret = config["Auth:Jwt:Key"] ?? throw new Exception("Couldn't get JWT environment variables.");
 
             services.AddAuthentication(options =>
             {
@@ -27,16 +24,28 @@ namespace Clbio.API.Extensions
                 options.SaveToken = false;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
+                    ValidateIssuer = false,
+                    ValidateAudience = false,
                     ValidateIssuerSigningKey = true,
                     ValidateLifetime = true,
-                    ClockSkew = TimeSpan.FromSeconds(30),
+                    ClockSkew = TimeSpan.Zero,
 
-                    ValidIssuer = validIssuer,
-                    ValidAudience = validAudience,
+                    // ValidIssuer = validIssuer,
+                    // ValidAudience = validAudience,
                     IssuerSigningKey = new SymmetricSecurityKey(
                         Encoding.UTF8.GetBytes(secret))
+                };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnAuthenticationFailed = context =>
+                    {
+                        if (context.Exception is SecurityTokenExpiredException)
+                        {
+                            context.Response.Headers.Append("Token-Expired", "true");
+                        }
+                        return Task.CompletedTask;
+                    }
                 };
             });
 
