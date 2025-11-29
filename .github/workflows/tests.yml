@@ -17,9 +17,20 @@ jobs:
           POSTGRES_USER: clbio
           POSTGRES_PASSWORD: clbio123
           POSTGRES_DB: clbio_test
-        ports: [ "5432:5432" ]
+        ports:
+          - 5432:5432
         options: >-
           --health-cmd="pg_isready -U clbio"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
           --health-interval=10s
           --health-timeout=5s
           --health-retries=5
@@ -27,11 +38,12 @@ jobs:
     env:
       ASPNETCORE_ENVIRONMENT: Test
       DB_CONNECTION_LOCAL: Host=localhost;Port=5432;Database=clbio_test;Username=clbio;Password=clbio123
+      RedisConnection: localhost:6379
 
     steps:
       - uses: actions/checkout@v4
   
-      - name: Wait for Postgres to be ready
+      - name: Wait for services to be ready
         run: sleep 10
 
       - name: Setup .NET
@@ -51,8 +63,6 @@ jobs:
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
-        with: 
-           name: test-results
-           path: '**/test_results.trx'
-
-      
+        with:
+          name: test-results
+          path: '**/test_results.trx'

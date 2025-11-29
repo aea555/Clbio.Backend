@@ -31,6 +31,21 @@ services:
       - .env
     networks:
       - clbio-net
+  
+  redis:
+    image: redis:7
+    container_name: clbio-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - clbio-net
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   clbio-api:
     build:
@@ -48,6 +63,7 @@ services:
     environment:
       - ConnectionStrings__DefaultConnection=${DB_CONNECTION_DOCKER}
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+      - RedisConnection=redis:6379  
     networks:
       - clbio-net  
     healthcheck:

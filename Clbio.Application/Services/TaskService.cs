@@ -14,12 +14,12 @@ namespace Clbio.Application.Services
         public override Task<Result> DeleteAsync(Guid id, CancellationToken ct = default) =>
             SafeExecution.ExecuteSafeAsync(async () =>
             {
-                var task = await Repo<TaskItem>().GetByIdAsync(id, ct) ?? throw new InvalidOperationException("Task not found");
-                var comments = await Repo<Comment>().FindAsync(c => c.TaskId == id, ct);
+                var task = await Repo<TaskItem>().GetByIdAsync(id, false, ct) ?? throw new InvalidOperationException("Task not found");
+                var comments = await Repo<Comment>().FindAsync(c => c.TaskId == id, false, ct);
                 foreach (var comment in comments)
                     await Repo<Comment>().DeleteAsync(comment.Id, ct);
 
-                var attachments = await Repo<Attachment>().FindAsync(a => a.TaskId == id, ct);
+                var attachments = await Repo<Attachment>().FindAsync(a => a.TaskId == id, false, ct);
                 foreach (var attachment in attachments)
                     await Repo<Attachment>().DeleteAsync(attachment.Id, ct);
 

@@ -35,7 +35,8 @@ namespace Clbio.API.Controllers.v1.Base
         [HttpGet("paged")]
         public virtual async Task<IActionResult> GetPaged([FromQuery] int page = 1, [FromQuery] int pageSize = 10, CancellationToken ct = default)
         {
-            var result = await _service.GetPagedAsync(page, pageSize, ct);
+            // only supports sorting by createdAt for now
+            var result = await _service.GetPagedAsync(page, pageSize, q => q.OrderBy(x => x.CreatedAt), ct);
             if (!result.Success)
                 return BadRequest(ApiResponse<object>.Fail(result.Error!, result.Code));
 

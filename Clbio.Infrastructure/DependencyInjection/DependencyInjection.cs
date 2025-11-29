@@ -9,8 +9,11 @@ namespace Clbio.Infrastructure.DependencyInjection
         {
             services
                 .AddDatabase(configuration)
+                .AddTokenService(configuration)
                 .AddRepositories(configuration)
-                .AddUnitOfWork(configuration);
+                .AddUnitOfWork(configuration)
+                .AddEmailSender(configuration)
+                .AddRedis(configuration);
 
             return services;
         }

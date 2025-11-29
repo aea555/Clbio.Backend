@@ -19,7 +19,7 @@ namespace Clbio.Application.Services
         public override Task<Result<Workspace>> CreateAsync(Workspace entity, CancellationToken ct = default) =>
             SafeExecution.ExecuteSafeAsync(async () =>
             {
-                var owner = await Repo<User>().GetByIdAsync(entity.OwnerId, ct)
+                var owner = await Repo<User>().GetByIdAsync(entity.OwnerId, false, ct)
                     ?? throw new InvalidOperationException("Owner not found");
 
                 entity.Owner = owner;
@@ -31,10 +31,10 @@ namespace Clbio.Application.Services
         public override Task<Result> DeleteAsync(Guid id, CancellationToken ct = default) =>
             SafeExecution.ExecuteSafeAsync(async () =>
             {
-                var workspace = await Repository.GetByIdAsync(id, ct)
+                var workspace = await Repository.GetByIdAsync(id, false, ct)
                     ?? throw new InvalidOperationException("Workspace not found");
 
-                var boards = await Repo<Board>().FindAsync(b => b.WorkspaceId == id, ct);
+                var boards = await Repo<Board>().FindAsync(b => b.WorkspaceId == id, true, ct);
                 foreach (var board in boards)
                     await _boardService.DeleteAsync(board.Id, ct);
 

@@ -27,17 +27,18 @@ namespace Clbio.Application.Services.Base
             SafeExecution.ExecuteSafeAsync(() => _repository.GetAllAsync(ct), _logger, "GET_ALL_FAILED");
 
         public virtual Task<Result<(IEnumerable<T> Items, int TotalCount)>> GetPagedAsync(
-            int page, int size, CancellationToken ct = default) =>
+            int page, int size, Func<IQueryable<T>,
+            IOrderedQueryable<T>> orderBy, CancellationToken ct = default) =>
             SafeExecution.ExecuteSafeAsync(async () =>
             {
                 if (page < 1 || size < 1)
                     throw new ArgumentException("Invalid paging parameters");
 
-                return await _repository.GetPagedAsync(page, size, ct);
+                return await _repository.GetPagedAsync(page, size, orderBy, false, ct);
             }, _logger, "GET_PAGED_FAILED");
 
         public virtual Task<Result<T?>> GetByIdAsync(Guid id, CancellationToken ct = default) =>
-            SafeExecution.ExecuteSafeAsync(() => _repository.GetByIdAsync(id, ct), _logger, "GET_BY_ID_FAILED");
+            SafeExecution.ExecuteSafeAsync(() => _repository.GetByIdAsync(id, true, ct), _logger, "GET_BY_ID_FAILED");
 
         public virtual Task<Result<T>> CreateAsync(T entity, CancellationToken ct = default) =>
             SafeExecution.ExecuteSafeAsync(async () =>
