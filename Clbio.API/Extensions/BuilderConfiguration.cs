@@ -49,9 +49,9 @@ namespace Clbio.API.Extensions
             else
             {
                 builder.Configuration
-               .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-               .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
-               .AddEnvironmentVariables();
+                   .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                   .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true)
+                   .AddEnvironmentVariables();
             }
             return builder;
         }

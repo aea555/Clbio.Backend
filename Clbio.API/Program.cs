@@ -2,6 +2,8 @@ using Clbio.API.DependencyInjection;
 using Clbio.API.Extensions;
 using Clbio.API.Middleware;
 
+DotNetEnv.Env.Load();
+
 var builder = WebApplication.CreateBuilder(args)
     .ConfigureBuilder()
     .ConfigureBuilderServices();
