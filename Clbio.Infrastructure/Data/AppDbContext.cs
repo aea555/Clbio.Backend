@@ -27,6 +27,7 @@ namespace Clbio.Infrastructure.Data
             // Apply the soft delete query filter globally
             ApplyGlobalQueryFilters(modelBuilder);
 
+            // apply custom fluent api configs
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
             foreach (var foreignKey in modelBuilder.Model.GetEntityTypes()

@@ -1,6 +1,7 @@
 ﻿using Clbio.Abstractions.Interfaces.Cache;
 using Clbio.Abstractions.Interfaces.Services;
 using Clbio.Application.Interfaces;
+using Clbio.Application.Interfaces.EntityServices;
 using Clbio.Application.Services;
 using Clbio.Application.Services.Auth;
 using Clbio.Application.Services.Auth.External;
@@ -14,8 +15,8 @@ namespace Clbio.Application.DependencyInjection
     {
         public static IServiceCollection AddServices(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddScoped<IWorkspaceService, WorkspaceService>();
-            services.AddScoped<IBoardService, BoardService>();
+            services.AddScoped<IWorkspaceAppService, WorkspaceService>();
+            services.AddScoped<IBoardAppService, BoardService>();
             services.AddScoped<IColumnService, ColumnService>();
             services.AddScoped<ITaskService, TaskService>();
             services.AddScoped<IUserService, UserService>();

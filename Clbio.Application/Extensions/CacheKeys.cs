@@ -10,6 +10,16 @@ namespace Clbio.Application.Extensions
         public static string User(Guid userId)
             => $"user:{userId}";
 
+        // VERSION KEYS ----------------------------------------------------
+        public static string WorkspaceVersionKey(Guid workspaceId)
+            => $"version:workspace:{workspaceId}";
+
+        public static string WorkspaceRoleVersionKey(WorkspaceRole role)
+            => $"version:wsrole:{role}";
+
+        public static string MembershipVersionKey(Guid userId, Guid workspaceId)
+            => $"version:membership:{workspaceId}:{userId}";
+
         // ─────────────────────────────────────────────────────
         // WORKSPACE
         // ─────────────────────────────────────────────────────

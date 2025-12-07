@@ -40,8 +40,8 @@ namespace Clbio.Infrastructure.Auth
                 var expires = now.AddMinutes(minutes);
 
                 var token = new JwtSecurityToken(
-                    issuer: config["Auth:Jwt:Issuer"],
-                    audience: config["Auth:Jwt:Audience"],
+                    //issuer: config["Auth:Jwt:Issuer"],
+                    //audience: config["Auth:Jwt:Audience"],
                     claims: claims,
                     notBefore: now,
                     expires: expires,

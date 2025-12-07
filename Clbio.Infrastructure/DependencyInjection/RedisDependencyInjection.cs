@@ -8,17 +8,23 @@ namespace Clbio.Infrastructure.DependencyInjection
     {
         public static IServiceCollection AddRedis(this IServiceCollection services, IConfiguration configuration)
         {
+            var envName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+
+            // In tests don't wire real Redis
+            if (string.Equals(envName, "Testing", StringComparison.OrdinalIgnoreCase))
+            {
+                // Use simple in-memory cache
+                services.AddDistributedMemoryCache();
+                return services;
+            }
+
             var redisConn = configuration.GetConnectionString("RedisConnection")
                          ?? "localhost:6379";
 
-            // Register the raw Redis connection for:
-            //    - pub/sub
-            //    - versioning
-            //    - key scanning
+            // In non-test envs, real Redis
             services.AddSingleton<IConnectionMultiplexer>(sp =>
                 ConnectionMultiplexer.Connect(redisConn));
 
-            // Register the distributed cache API(IDistributedCache)
             services.AddStackExchangeRedisCache(options =>
             {
                 options.Configuration = redisConn;
@@ -27,5 +33,4 @@ namespace Clbio.Infrastructure.DependencyInjection
             return services;
         }
     }
-
 }

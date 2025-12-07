@@ -2,14 +2,17 @@
 using Clbio.Application.Interfaces;
 using Clbio.Infrastructure.Data;
 using Clbio.Tests.Helpers;
+using Clbio.Tests.Utils.Fakes;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using StackExchange.Redis;
 
 namespace Clbio.Tests.Utils
 {
@@ -59,6 +62,14 @@ namespace Clbio.Tests.Utils
                 services.RemoveAll<IGoogleAuthService>();
                 services.RemoveAll<AppDbContext>();
                 services.RemoveAll<IDbContextOptionsConfiguration<AppDbContext>>();
+
+                services.RemoveAll<IConnectionMultiplexer>();
+                services.RemoveAll<IDistributedCache>();
+
+                services.AddDistributedMemoryCache();
+
+                services.RemoveAll<IHostedService>();
+                services.AddSingleton<IHostedService, FakeHostedService>();
 
                 services.AddSingleton<IEmailSender, FakeEmailSender>();
 

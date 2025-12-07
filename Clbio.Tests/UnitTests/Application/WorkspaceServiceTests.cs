@@ -1,8 +1,12 @@
-﻿using Clbio.Abstractions.Interfaces;
+﻿using AutoMapper;
+using Clbio.Abstractions.Interfaces;
 using Clbio.Abstractions.Interfaces.Repositories;
 using Clbio.Abstractions.Interfaces.Services;
+using Clbio.Application.Mappings.V1;
 using Clbio.Application.Services;
 using Clbio.Domain.Entities.V1;
+using Clbio.Tests.Utils.Fakes;
+using Microsoft.Extensions.Logging;
 using Moq;
 using System.Linq.Expressions;
 
@@ -45,7 +49,28 @@ namespace Clbio.Tests.UnitTests.Application
                     It.IsAny<CancellationToken>()))
                 .ReturnsAsync(boards);
 
-            var service = new WorkspaceService(mockUow.Object, mockBoardService.Object);
+            var fakeCache = new FakeCaching();
+            var fakeInvalidator = new FakeCacheInvalidationService();
+            var fakeVersions = new FakeCacheVersionService();
+            var loggerFactory = LoggerFactory.Create(builder => { });
+
+            var mapperConfig = new MapperConfiguration(cfg =>
+            {
+                cfg.AddProfile(new WorkspaceMappings());
+            }, loggerFactory);
+
+            var fakeMapper = mapperConfig.CreateMapper();
+
+
+            var service = new WorkspaceService(
+                mockUow.Object,
+                fakeCache,
+                fakeInvalidator,
+                fakeVersions,
+                mockBoardService.Object,
+                fakeMapper,
+                null
+            );
 
             // Act
             await service.DeleteAsync(workspaceId, CancellationToken.None);

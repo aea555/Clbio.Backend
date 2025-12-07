@@ -68,9 +68,12 @@ namespace Clbio.Application.Services.Auth
                 if (workspace is null)
                     return Result<bool>.Fail("Workspace not found.");
 
+                var membershipVersion =
+                    await _versionService.GetMembershipVersionAsync(userId, workspaceId.Value);
+
                 // Check membership 
                 var membership = await _cache.GetOrSetAsync(
-                    key: CacheKeys.Membership(userId, workspaceId.Value, wsVersion),
+                    key: CacheKeys.Membership(userId, workspaceId.Value, membershipVersion),
                     factory: async () =>
                     {
                         return await _workspaceMemberRepo.Query()
