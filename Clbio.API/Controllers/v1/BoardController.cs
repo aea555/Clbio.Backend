@@ -40,9 +40,9 @@ namespace Clbio.API.Controllers.v1
         // -------------------------------------------------------------
         [HttpGet("{boardId:guid}")]
         [RequirePermission(Permission.ViewBoard, "workspaceId")]
-        public async Task<IActionResult> Get(Guid boardId, CancellationToken ct)
+        public async Task<IActionResult> Get(Guid workspaceId, Guid boardId, CancellationToken ct)
         {
-            var result = await _service.GetByIdAsync(boardId, ct);
+            var result = await _service.GetByIdAsync(workspaceId, boardId, ct);
 
             if (!result.Success)
                 return BadRequest(ApiResponse.Fail(result.Error!, result.Code));
@@ -77,13 +77,13 @@ namespace Clbio.API.Controllers.v1
         // -------------------------------------------------------------
         [HttpPut("{boardId:guid}")]
         [RequirePermission(Permission.UpdateBoard, "workspaceId")]
-        public async Task<IActionResult> Update(Guid boardId, [FromBody] UpdateBoardDto dto, CancellationToken ct)
+        public async Task<IActionResult> Update(Guid workspaceId, Guid boardId, [FromBody] UpdateBoardDto dto, CancellationToken ct)
         {
             // ID in body is meaningless—ensure route ID wins
             if (dto.Id != boardId)
                 return BadRequest(ApiResponse.Fail("Board ID mismatch."));
 
-            var result = await _service.UpdateAsync(boardId, dto, ct);
+            var result = await _service.UpdateAsync(workspaceId, boardId, dto, ct);
 
             if (!result.Success)
                 return BadRequest(ApiResponse.Fail(result.Error!, result.Code));
@@ -97,9 +97,9 @@ namespace Clbio.API.Controllers.v1
         // -------------------------------------------------------------
         [HttpDelete("{boardId:guid}")]
         [RequirePermission(Permission.DeleteBoard, "workspaceId")]
-        public async Task<IActionResult> Delete(Guid boardId, CancellationToken ct)
+        public async Task<IActionResult> Delete(Guid workspaceId, Guid boardId, CancellationToken ct)
         {
-            var result = await _service.DeleteAsync(boardId, ct);
+            var result = await _service.DeleteAsync(workspaceId, boardId, ct);
 
             if (!result.Success)
                 return BadRequest(ApiResponse.Fail(result.Error!, result.Code));

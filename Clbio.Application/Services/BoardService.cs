@@ -52,7 +52,7 @@ namespace Clbio.Application.Services
         // ---------------------------------------------------------------------
         // GET BOARD BY ID
         // ---------------------------------------------------------------------
-        public async Task<Result<ReadBoardDto?>> GetByIdAsync(Guid boardId, CancellationToken ct = default)
+        public async Task<Result<ReadBoardDto?>> GetByIdAsync(Guid workspaceId, Guid boardId, CancellationToken ct = default)
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
@@ -62,6 +62,11 @@ namespace Clbio.Application.Services
 
                 if (board == null)
                     return null;
+
+                if (board.WorkspaceId != workspaceId)
+                {
+                    throw new UnauthorizedAccessException("Access to this board is denied under the current workspace.");
+                }
 
                 return _mapper.Map<ReadBoardDto>(board);
 
@@ -100,12 +105,15 @@ namespace Clbio.Application.Services
         // ---------------------------------------------------------------------
         // UPDATE BOARD
         // ---------------------------------------------------------------------
-        public async Task<Result> UpdateAsync(Guid boardId, UpdateBoardDto dto, CancellationToken ct = default)
+        public async Task<Result> UpdateAsync(Guid workspaceId, Guid boardId, UpdateBoardDto dto, CancellationToken ct = default)
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
                 var board = await _boardRepo.GetByIdAsync(boardId, true, ct)
                             ?? throw new InvalidOperationException("Board not found.");
+
+                if (board.WorkspaceId != workspaceId)
+                    throw new UnauthorizedAccessException("Board does not belong to the specified workspace.");
 
                 _mapper.Map(dto, board);
 
@@ -119,14 +127,15 @@ namespace Clbio.Application.Services
         // ---------------------------------------------------------------------
         // DELETE BOARD
         // ---------------------------------------------------------------------
-        public async Task<Result> DeleteAsync(Guid boardId, CancellationToken ct = default)
+        public async Task<Result> DeleteAsync(Guid workspaceId, Guid boardId, CancellationToken ct = default)
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
                 var board = await _boardRepo.GetByIdAsync(boardId, false, ct)
                             ?? throw new InvalidOperationException("Board not found.");
 
-                var workspaceId = board.WorkspaceId;
+                if (board.WorkspaceId != workspaceId)
+                    throw new UnauthorizedAccessException("Board does not belong to the specified workspace.");
 
                 // delete related columns
                 var columns = await _columnRepo.Query()

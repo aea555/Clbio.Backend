@@ -6,10 +6,10 @@ namespace Clbio.Application.Interfaces.EntityServices
     public interface IBoardAppService
     {
         Task<Result<List<ReadBoardDto>>> GetAllAsync(Guid workspaceId, CancellationToken ct = default);
-        Task<Result<ReadBoardDto?>> GetByIdAsync(Guid boardId, CancellationToken ct = default);
+        Task<Result<ReadBoardDto?>> GetByIdAsync(Guid workspaceId, Guid boardId, CancellationToken ct = default);
         Task<Result<ReadBoardDto>> CreateAsync(CreateBoardDto dto, CancellationToken ct = default);
-        Task<Result> UpdateAsync(Guid boardId, UpdateBoardDto dto, CancellationToken ct = default);
-        Task<Result> DeleteAsync(Guid boardId, CancellationToken ct = default);
+        Task<Result> UpdateAsync(Guid workspaceId, Guid boardId, UpdateBoardDto dto, CancellationToken ct = default);
+        Task<Result> DeleteAsync(Guid workspaceId, Guid boardId, CancellationToken ct = default);
         Task<Result> ReorderAsync(Guid workspaceId, List<Guid> boardOrder, CancellationToken ct = default);
     }
 }
