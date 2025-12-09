@@ -19,12 +19,13 @@ namespace Clbio.Application.DependencyInjection
             services.AddScoped<IBoardAppService, BoardService>();
             services.AddScoped<IColumnAppService, ColumnService>();
             services.AddScoped<ITaskService, TaskService>();
-            services.AddScoped<IUserService, UserService>();
+            services.AddScoped<IUserAppService, UserService>();
+            services.AddScoped<IRoleAppService, RoleService>();
             services.AddScoped<IWorkspaceMemberService, WorkspaceMemberService>();
-            services.AddScoped<ICommentService, CommentService>();
-            services.AddScoped<INotificationService, NotificationService>();
-            services.AddScoped<IAttachmentService, AttachmentService>();
-            services.AddScoped<IActivityLogService, ActivityLogService>();
+            services.AddScoped<ICommentAppService, CommentService>();
+            services.AddScoped<INotificationAppService, NotificationService>();
+            services.AddScoped<IAttachmentAppService, AttachmentService>();
+            services.AddScoped<IActivityLogAppService, ActivityLogService>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IAuthThrottlingService, AuthThrottlingService>();
             services.AddScoped<IEmailVerificationService, EmailVerificationService>();
