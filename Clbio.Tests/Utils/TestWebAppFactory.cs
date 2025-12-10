@@ -83,6 +83,9 @@ namespace Clbio.Tests.Utils
                 using var scope = sp.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
                 db.Database.EnsureCreated();
+
+                // fake IP middleware
+                services.AddSingleton<IStartupFilter, FakeIpStartupFilter>();
             });
         }
     }

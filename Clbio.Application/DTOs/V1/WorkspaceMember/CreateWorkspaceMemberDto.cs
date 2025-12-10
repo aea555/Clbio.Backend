@@ -10,8 +10,8 @@ namespace Clbio.Application.DTOs.V1.WorkspaceMember
         public Guid WorkspaceId { get; set; }
 
         [Required]
-        public Guid UserId { get; set; }
-
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
         [Required]
         public WorkspaceRole Role { get; set; } = WorkspaceRole.Member;
     }

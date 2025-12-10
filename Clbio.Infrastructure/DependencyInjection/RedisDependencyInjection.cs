@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using Clbio.Abstractions.Interfaces.Services;
+using Clbio.Infrastructure.Services;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using StackExchange.Redis;
 
@@ -29,6 +31,9 @@ namespace Clbio.Infrastructure.DependencyInjection
             {
                 options.Configuration = redisConn;
             });
+
+            // Presence service
+            services.AddScoped<IPresenceService, RedisPresenceService>();
 
             return services;
         }
