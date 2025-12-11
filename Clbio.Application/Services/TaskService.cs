@@ -17,6 +17,7 @@ namespace Clbio.Application.Services
     public class TaskService(
         IUnitOfWork uow,
         IMapper mapper,
+        IActivityLogAppService activityLog,
         ICacheInvalidationService invalidator,
         ICacheService cache,
         ICacheVersionService versions,
@@ -26,6 +27,7 @@ namespace Clbio.Application.Services
         : ServiceBase<TaskItem>(uow, logger), ITaskAppService
     {
         private readonly IMapper _mapper = mapper;
+        private readonly IActivityLogAppService _activityLog = activityLog;
         private readonly ICacheInvalidationService _invalidator = invalidator;
         private readonly ICacheService _cache = cache;
         private readonly ICacheVersionService _versions = versions;
@@ -91,7 +93,7 @@ namespace Clbio.Application.Services
             }, _logger, "TASK_GET_FAILED");
         }
 
-        public async Task<Result<ReadTaskItemDto>> CreateAsync(Guid workspaceId, CreateTaskItemDto dto, CancellationToken ct = default)
+        public async Task<Result<ReadTaskItemDto>> CreateAsync(Guid actorId, Guid workspaceId, CreateTaskItemDto dto, CancellationToken ct = default)
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
@@ -119,11 +121,13 @@ namespace Clbio.Application.Services
                 // Real-Time
                 await _socketService.SendToWorkspaceAsync(workspaceId, "TaskCreated", readDto, ct);
 
+                await _activityLog.LogAsync(workspaceId, actorId, "Task", task.Id, "Create", $"Task '{task.Title}' created.", ct);
+
                 return readDto;
             }, _logger, "TASK_CREATE_FAILED");
         }
 
-        public async Task<Result> MoveTaskAsync(Guid workspaceId, Guid taskId, Guid targetColumnId, int newPosition, CancellationToken ct = default)
+        public async Task<Result> MoveTaskAsync(Guid actorId, Guid workspaceId, Guid taskId, Guid targetColumnId, int newPosition, CancellationToken ct = default)
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
@@ -178,6 +182,16 @@ namespace Clbio.Application.Services
                 }
 
                 await _uow.SaveChangesAsync(ct);
+
+                await _activityLog.LogAsync(
+                    workspaceId,
+                    actorId,
+                    "Task",
+                    taskId,
+                    "Move",
+                    $"Task moved to new position {newPosition}.",
+                    ct);
+
                 await _invalidator.InvalidateWorkspace(workspaceId);
 
                 // Real-Time
@@ -286,6 +300,13 @@ namespace Clbio.Application.Services
                 task.AssigneeId = assigneeId;
 
                 await _uow.SaveChangesAsync(ct);
+
+                var action = assigneeId.HasValue ? "Assign" : "Unassign";
+                var detail = assigneeId.HasValue
+                    ? $"Assigned to user."
+                    : "User unassigned.";
+
+                await _activityLog.LogAsync(workspaceId, actorId, "Task", taskId, action, detail, ct);
 
                 await _socketService.SendToWorkspaceAsync(workspaceId, "TaskAssigned", new
                 {

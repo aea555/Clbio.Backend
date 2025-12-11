@@ -11,5 +11,6 @@ namespace Clbio.Application.Interfaces.EntityServices
             int page,
             int pageSize,
             CancellationToken ct = default);
+        Task LogAsync(Guid workspaceId, Guid userId, string entityType, Guid entityId, string actionType, string metadata, CancellationToken ct = default);
     }
 }

@@ -9,14 +9,9 @@ namespace Clbio.API.Controllers.v1
 {
     [ApiController]
     [Route("api/workspaces/{workspaceId:guid}/boards")]
-    public class BoardController : ControllerBase
+    public class BoardController(IBoardAppService service) : ControllerBase
     {
-        private readonly IBoardAppService _service;
-
-        public BoardController(IBoardAppService service)
-        {
-            _service = service;
-        }
+        private readonly IBoardAppService _service = service;
 
         // -------------------------------------------------------------
         // GET: /api/workspaces/{workspaceId}/boards
@@ -63,7 +58,7 @@ namespace Clbio.API.Controllers.v1
         {
             dto.WorkspaceId = workspaceId;
 
-            var result = await _service.CreateAsync(dto, ct);
+            var result = await _service.CreateAsync(User.GetUserId(), dto, ct);
 
             if (!result.Success)
                 return BadRequest(ApiResponse.Fail(result.Error!, result.Code));
@@ -99,7 +94,7 @@ namespace Clbio.API.Controllers.v1
         [RequirePermission(Permission.DeleteBoard, "workspaceId")]
         public async Task<IActionResult> Delete(Guid workspaceId, Guid boardId, CancellationToken ct)
         {
-            var result = await _service.DeleteAsync(workspaceId, boardId, ct);
+            var result = await _service.DeleteAsync(User.GetUserId(), workspaceId, boardId, ct);
 
             if (!result.Success)
                 return BadRequest(ApiResponse.Fail(result.Error!, result.Code));

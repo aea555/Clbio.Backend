@@ -34,7 +34,7 @@ namespace Clbio.API.Controllers.v1
         {
             if (dto.ColumnId == Guid.Empty) return BadRequest(ApiResponse.Fail("ColumnId is required."));
 
-            var result = await _service.CreateAsync(workspaceId, dto, ct);
+            var result = await _service.CreateAsync(User.GetUserId(), workspaceId, dto, ct);
             return result.Success ? Ok(ApiResponse.Ok(result.Value)) : BadRequest(ApiResponse.Fail(result.Error));
         }
 
@@ -52,7 +52,7 @@ namespace Clbio.API.Controllers.v1
         [RequirePermission(Permission.MoveTask, "workspaceId")]
         public async Task<IActionResult> Move(Guid workspaceId, Guid taskId, [FromBody] MoveTaskDto dto, CancellationToken ct)
         {
-            var result = await _service.MoveTaskAsync(workspaceId, taskId, dto.TargetColumnId, dto.NewPosition, ct);
+            var result = await _service.MoveTaskAsync(User.GetUserId(), workspaceId, taskId, dto.TargetColumnId, dto.NewPosition, ct);
             return result.Success ? Ok(ApiResponse.Ok("Moved")) : BadRequest(ApiResponse.Fail(result.Error));
         }
 

@@ -15,7 +15,7 @@ namespace Clbio.Application.Services
 {
     public sealed class BoardService(
         IUnitOfWork uow,
-        IColumnService columnService,
+        IActivityLogAppService activityLog,
         ICacheInvalidationService invalidator,
         ICacheService cache,
         ICacheVersionService versions,
@@ -25,9 +25,9 @@ namespace Clbio.Application.Services
     {
         private readonly IUnitOfWork _uow = uow;
         private readonly IRepository<Board> _boardRepo = uow.Repository<Board>();
-        private readonly IRepository<Workspace> _workspaceRepo = uow.Repository<Workspace>();
         private readonly IRepository<Column> _columnRepo = uow.Repository<Column>();
 
+        private readonly IActivityLogAppService _activityLog = activityLog;
         private readonly ICacheInvalidationService _invalidator = invalidator;
         private readonly ICacheService _cache = cache;
         private readonly ICacheVersionService _versions = versions;
@@ -96,14 +96,10 @@ namespace Clbio.Application.Services
         // ---------------------------------------------------------------------
         // CREATE BOARD
         // ---------------------------------------------------------------------
-        public async Task<Result<ReadBoardDto>> CreateAsync(CreateBoardDto dto, CancellationToken ct = default)
+        public async Task<Result<ReadBoardDto>> CreateAsync(Guid actorId, CreateBoardDto dto, CancellationToken ct = default)
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
-                // ensure workspace exists
-                var ws = await _workspaceRepo.GetByIdAsync(dto.WorkspaceId, false, ct)
-                          ?? throw new InvalidOperationException("Workspace not found.");
-
                 var board = _mapper.Map<Board>(dto);
 
                 // assign last order
@@ -113,6 +109,8 @@ namespace Clbio.Application.Services
 
                 await _boardRepo.AddAsync(board, ct);
                 await _uow.SaveChangesAsync(ct);
+
+                await _activityLog.LogAsync(dto.WorkspaceId, actorId, "Board", board.Id, "Create", $"Board '{board.Name}' created.", ct);
 
                 // bump workspace version
                 await _invalidator.InvalidateWorkspace(dto.WorkspaceId);
@@ -154,7 +152,7 @@ namespace Clbio.Application.Services
         // ---------------------------------------------------------------------
         // DELETE BOARD
         // ---------------------------------------------------------------------
-        public async Task<Result> DeleteAsync(Guid workspaceId, Guid boardId, CancellationToken ct = default)
+        public async Task<Result> DeleteAsync(Guid actorId, Guid workspaceId, Guid boardId, CancellationToken ct = default)
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
@@ -205,6 +203,8 @@ namespace Clbio.Application.Services
                 // delete board
                 await _boardRepo.DeleteAsync(boardId, ct);
                 await _uow.SaveChangesAsync(ct);
+
+                await _activityLog.LogAsync(workspaceId, actorId, "Board", boardId, "Delete", "Board deleted.", ct);
 
                 await _invalidator.InvalidateWorkspace(workspaceId);
 
