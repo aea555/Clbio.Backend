@@ -221,12 +221,55 @@ namespace Clbio.Application.Services
                 var entity = await _workspaceRepo.GetByIdAsync(workspaceId, false, ct)
                               ?? throw new InvalidOperationException("Workspace not found");
 
-                // Delete boards first
-                var boards = await _boardRepo.FindAsync(b => b.WorkspaceId == workspaceId, true, ct);
-                foreach (var board in boards)
-                    await _boardService.DeleteAsync(board.Id, ct);
+                var boardIds = await _boardRepo.Query()
+                    .Where(b => b.WorkspaceId == workspaceId)
+                    .Select(b => b.Id)
+                    .ToListAsync(ct);
 
-                await _workspaceRepo.DeleteAsync(workspaceId, ct);
+                var utcNow = DateTime.UtcNow;
+
+                if (boardIds.Count != 0)
+                {
+                    var columnIds = await uow.Repository<Column>().Query()
+                        .Where(c => boardIds.Contains(c.BoardId))
+                        .Select(c => c.Id)
+                        .ToListAsync(ct);
+
+                    if (columnIds.Count != 0)
+                    {
+                        var taskIds = await uow.Repository<TaskItem>().Query()
+                            .Where(t => columnIds.Contains(t.ColumnId))
+                            .Select(t => t.Id)
+                            .ToListAsync(ct);
+
+                        if (taskIds.Count != 0)
+                        {
+                            await uow.Repository<Comment>().Query()
+                                .Where(c => taskIds.Contains(c.TaskId))
+                                .ExecuteUpdateAsync(s => s.SetProperty(x => x.IsDeleted, true).SetProperty(x => x.DeletedAt, utcNow), ct);
+
+                            await uow.Repository<Attachment>().Query()
+                                .Where(a => taskIds.Contains(a.TaskId))
+                                .ExecuteUpdateAsync(s => s.SetProperty(x => x.IsDeleted, true).SetProperty(x => x.DeletedAt, utcNow), ct);
+
+                            await uow.Repository<TaskItem>().Query()
+                                .Where(t => taskIds.Contains(t.Id))
+                                .ExecuteUpdateAsync(s => s.SetProperty(x => x.IsDeleted, true).SetProperty(x => x.DeletedAt, utcNow), ct);
+                        }
+
+                        await uow.Repository<Column>().Query()
+                            .Where(c => columnIds.Contains(c.Id))
+                            .ExecuteUpdateAsync(s => s.SetProperty(x => x.IsDeleted, true).SetProperty(x => x.DeletedAt, utcNow), ct);
+                    }
+
+                    await _boardRepo.Query()
+                        .Where(b => boardIds.Contains(b.Id))
+                        .ExecuteUpdateAsync(s => s.SetProperty(x => x.IsDeleted, true).SetProperty(x => x.DeletedAt, utcNow), ct);
+                }
+
+                await _workspaceMemberRepo.Query()
+                    .Where(m => m.WorkspaceId == workspaceId)
+                    .ExecuteUpdateAsync(s => s.SetProperty(x => x.IsDeleted, true).SetProperty(x => x.DeletedAt, utcNow), ct);
                 await _uow.SaveChangesAsync(ct);
 
                 await _invalidator.InvalidateWorkspace(workspaceId);

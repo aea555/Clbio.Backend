@@ -27,10 +27,10 @@ namespace Clbio.API.Controllers.v1
         [RequirePermission(Permission.AddMember, "workspaceId")]
         public async Task<IActionResult> Add(Guid workspaceId, [FromBody] CreateWorkspaceMemberDto dto, CancellationToken ct)
         {
-            // override workspace id
             dto.WorkspaceId = workspaceId;
+            var actorId = User.GetUserId();
 
-            var result = await _service.AddMemberAsync(workspaceId, dto, ct);
+            var result = await _service.AddMemberAsync(workspaceId, dto, actorId, ct);
             return result.Success ? Ok(ApiResponse.Ok(result.Value)) : BadRequest(ApiResponse.Fail(result.Error));
         }
 

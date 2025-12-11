@@ -2,6 +2,7 @@
 using Clbio.Abstractions.Interfaces;
 using Clbio.Abstractions.Interfaces.Cache;
 using Clbio.Abstractions.Interfaces.Repositories;
+using Clbio.Abstractions.Interfaces.Services;
 using Clbio.Application.DTOs.V1.Comment;
 using Clbio.Application.Extensions;
 using Clbio.Application.Interfaces.EntityServices;
@@ -18,11 +19,15 @@ namespace Clbio.Application.Services
         IUnitOfWork uow,
         IMapper mapper,
         ICacheInvalidationService invalidator,
+        INotificationAppService notificationService,
+        ISocketService socketService,
         ILogger<CommentService>? logger = null)
         : ServiceBase<Comment>(uow, logger), ICommentAppService
     {
         private readonly IMapper _mapper = mapper;
         private readonly ICacheInvalidationService _invalidator = invalidator;
+        private readonly INotificationAppService _notificationService = notificationService;
+        private readonly ISocketService _socketService = socketService;
         private readonly IRepository<TaskItem> _taskRepo = uow.Repository<TaskItem>();
         private readonly IRepository<Comment> _commentRepo = uow.Repository<Comment>();
         private readonly IRepository<User> _userRepo = uow.Repository<User>();
@@ -76,30 +81,32 @@ namespace Clbio.Application.Services
                 if (task.Column.Board.WorkspaceId != workspaceId)
                     throw new UnauthorizedAccessException("Cannot add comment: Task is outside the workspace scope.");
 
-                // 2. Entity oluştur
+                // 2. create entity
                 var comment = _mapper.Map<Comment>(dto);
 
                 await _commentRepo.AddAsync(comment, ct);
                 await _uow.SaveChangesAsync(ct);
-
-                // Yazar bilgisini (Avatar, İsim) dönmek için kullanıcıyı yüklememiz veya include etmemiz lazım.
-                // EF Core Add sonrası navigation property'i otomatik doldurmayabilir, explicit load yapıyoruz.
-                await _uow.Repository<User>().GetByIdAsync(dto.AuthorId, false, ct); // Context'e track ettirmek için
-
-                // Veya daha temiz: DTO mapping öncesi manuel setleme
-                // (ReadDto mapping'i Author navigation property'sine bağlı olduğu için bu adım önemli)
-
-                // Cache Invalidasyonu (Opsiyonel: Yorumlar genellikle anlık çekilir ama Workspace versiyonunu artırmak 
-                // "Last Activity" gibi özellikler için iyidir)
                 await _invalidator.InvalidateWorkspace(workspaceId);
 
-                // Mapping için Author'ı tekrar yükleyelim (Garanti yöntem)
-                var createdComment = await _commentRepo.Query()
+                var createdCommentWithAuthor = await _commentRepo.Query()
                     .Include(c => c.Author)
                     .FirstAsync(c => c.Id == comment.Id, ct);
 
-                return _mapper.Map<ReadCommentDto>(createdComment);
+                var readDto = _mapper.Map<ReadCommentDto>(createdCommentWithAuthor);
 
+                if (task.AssigneeId.HasValue && task.AssigneeId != dto.AuthorId)
+                {
+                    await _notificationService.SendNotificationAsync(
+                        task.AssigneeId.Value,
+                        "New Comment",
+                        $"New comment on task '{task.Title}'",
+                        ct);
+                }
+
+                // 3. Real-time
+                await _socketService.SendToWorkspaceAsync(workspaceId, "CommentAdded", readDto, ct);
+
+                return readDto;
             }, _logger, "COMMENT_CREATE_FAILED");
         }
 
@@ -110,7 +117,6 @@ namespace Clbio.Application.Services
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
-                // 1. Yorumu ve gerekli hiyerarşiyi çek
                 var comment = await _commentRepo.Query()
                     .Include(c => c.Task)
                         .ThenInclude(t => t.Column)
@@ -118,60 +124,35 @@ namespace Clbio.Application.Services
                     .FirstOrDefaultAsync(c => c.Id == commentId, ct)
                     ?? throw new InvalidOperationException("Comment not found.");
 
-                // 2. Temel Güvenlik: Yorum bu workspace'e mi ait?
                 if (comment.Task.Column.Board.WorkspaceId != workspaceId)
                     throw new UnauthorizedAccessException("Comment is outside the workspace scope.");
 
-                // 3. İşlemi yapan kullanıcıyı (Current User) çek
                 var currentUser = await _userRepo.GetByIdAsync(currentUserId, false, ct)
                                   ?? throw new InvalidOperationException("User not found.");
 
-                // --- YETKİ KONTROL MATRİSİ ---
-
-                // KURAL 1: Global Admin her şeyi silebilir.
                 if (currentUser.GlobalRole == GlobalRole.Admin)
                 {
                     await PerformDelete(workspaceId, commentId, ct);
                     return;
                 }
 
-                // KURAL 2: Kullanıcı kendi yorumunu her zaman silebilir.
                 if (comment.AuthorId == currentUserId)
                 {
                     await PerformDelete(workspaceId, commentId, ct);
                     return;
                 }
 
-                // Buraya geldiysek kullanıcı BAŞKASININ yorumunu silmeye çalışıyor.
-                // Şimdi rütbeleri savaştıracağız.
-
-                // A. İşlemi yapan kişinin Workspace'teki rütbesini bul
                 var currentMember = await _memberRepo.Query()
                     .FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == currentUserId, ct);
 
                 if (currentMember == null)
                     throw new UnauthorizedAccessException("You are not a member of this workspace.");
 
-                // B. Yorum sahibinin (Target) Workspace'teki rütbesini bul
                 var authorMember = await _memberRepo.Query()
                     .FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == comment.AuthorId, ct);
 
-                // Yorum sahibi artık workspace üyesi değilse (ayrılmışsa), 
-                // genellikle PrivilegedMember ve üstünün silmesine izin verilir.
-                // Eğer üye ise gerçek rütbesini, değilse en düşük rütbeden bile düşük (-1) varsayalım.
                 int authorRoleValue = authorMember != null ? (int)authorMember.Role : -1;
                 int currentRoleValue = (int)currentMember.Role;
-
-                // KURAL 3: Hiyerarşi Kontrolü
-                // Eğer benim rütbem, hedef kişinin rütbesinden BÜYÜKSE silebilirim.
-                // Eşitse SİLEMEM (Privileged vs Privileged).
-                // Küçükse zaten SİLEMEM.
-
-                // Örnek:
-                // Owner(2) > Privileged(1) -> TRUE (Silebilir)
-                // Privileged(1) > Member(0) -> TRUE (Silebilir)
-                // Privileged(1) > Privileged(1) -> FALSE (Silemez)
-                // Member(0) > Member(0) -> FALSE (Silemez)
 
                 if (currentRoleValue > authorRoleValue)
                 {

@@ -15,7 +15,7 @@ namespace Clbio.API.Controllers.v1
 
         // ---------------------------------------------------------------------
         // GET: /api/workspaces/{wsId}/boards/{boardId}/columns
-        // Yetki: ViewColumn
+        // requires: ViewColumn
         // ---------------------------------------------------------------------
         [HttpGet]
         [RequirePermission(Permission.ViewColumn, "workspaceId")]
@@ -31,7 +31,7 @@ namespace Clbio.API.Controllers.v1
 
         // ---------------------------------------------------------------------
         // POST: /api/workspaces/{wsId}/boards/{boardId}/columns
-        // Yetki: CreateColumn
+        // requires: CreateColumn
         // ---------------------------------------------------------------------
         [HttpPost]
         [RequirePermission(Permission.CreateColumn, "workspaceId")]
@@ -49,7 +49,7 @@ namespace Clbio.API.Controllers.v1
 
         // ---------------------------------------------------------------------
         // PUT: /api/workspaces/{wsId}/boards/{boardId}/columns/{columnId}
-        // Yetki: UpdateColumn
+        // requires: UpdateColumn
         // ---------------------------------------------------------------------
         [HttpPut("{columnId:guid}")]
         [RequirePermission(Permission.UpdateColumn, "workspaceId")]
@@ -68,13 +68,13 @@ namespace Clbio.API.Controllers.v1
 
         // ---------------------------------------------------------------------
         // DELETE: /api/workspaces/{wsId}/boards/{boardId}/columns/{columnId}
-        // Yetki: DeleteColumn
+        // requires: DeleteColumn
         // ---------------------------------------------------------------------
         [HttpDelete("{columnId:guid}")]
         [RequirePermission(Permission.DeleteColumn, "workspaceId")]
         public async Task<IActionResult> Delete(Guid workspaceId, Guid boardId, Guid columnId, CancellationToken ct)
         {
-            var result = await _service.DeleteAsync(columnId, ct);
+            var result = await _service.DeleteAsync(workspaceId, boardId, columnId, ct);
 
             if (!result.Success)
                 return BadRequest(ApiResponse.Fail(result.Error!, result.Code));
@@ -84,7 +84,7 @@ namespace Clbio.API.Controllers.v1
 
         // ---------------------------------------------------------------------
         // POST: /api/workspaces/{wsId}/boards/{boardId}/columns/reorder
-        // Yetki: ReorderColumn
+        // requires: ReorderColumn
         // ---------------------------------------------------------------------
         [HttpPost("reorder")]
         [RequirePermission(Permission.ReorderColumn, "workspaceId")]

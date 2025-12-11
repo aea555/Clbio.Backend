@@ -7,6 +7,7 @@ namespace Clbio.Application.DTOs.V1.User
     {
         [Required]
         [EmailAddress]
+        [MaxLength(100)]
         public string Email { get; set; } = null!;
         [Required]
         [StringLength(100, MinimumLength = 6)]
@@ -15,6 +16,7 @@ namespace Clbio.Application.DTOs.V1.User
         [StringLength(50, MinimumLength = 3)]
         public string DisplayName { get; set; } = default!;
         [Url]
+        [MaxLength(2048)]
         public string? AvatarUrl { get; set; }
     }
 }

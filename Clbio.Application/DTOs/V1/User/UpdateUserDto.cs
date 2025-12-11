@@ -10,6 +10,7 @@ namespace Clbio.Application.DTOs.V1.User
         public string DisplayName { get; set; } = null!;
 
         [Url]
+        [MaxLength(2048)]
         public string? AvatarUrl { get; set; }
     }
 }

@@ -18,16 +18,23 @@ namespace Clbio.Application.Services
         IUnitOfWork uow,
         ITaskService taskService,
         ICacheInvalidationService invalidator,
+        ICacheService cache,
+        ICacheVersionService versions,
+        ISocketService socketService,
         IMapper mapper,
         ILogger<ColumnService>? logger = null)
         : ServiceBase<Column>(uow, logger), IColumnAppService
     {
         private readonly ITaskService _taskService = taskService;
         private readonly ICacheInvalidationService _invalidator = invalidator;
+        private readonly ICacheService _cache = cache;
+        private readonly ICacheVersionService _versions = versions;
+        private readonly ISocketService _socketService = socketService;
         private readonly IMapper _mapper = mapper;
 
         private readonly IRepository<Column> _columnRepo = uow.Repository<Column>();
         private readonly IRepository<Board> _boardRepo = uow.Repository<Board>();
+        private readonly IRepository<TaskItem> _taskRepo = uow.Repository<TaskItem>();
 
         // ---------------------------------------------------------------------
         // GET ALL 
@@ -36,11 +43,22 @@ namespace Clbio.Application.Services
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
-                var columns = await _columnRepo.Query()
-                    .Where(c => c.BoardId == boardId)
-                    .OrderBy(c => c.Position)
-                    .Include(c => c.Tasks)
-                    .ToListAsync(ct);
+                var boardMeta = await _boardRepo.Query()
+                    .Where(b => b.Id == boardId)
+                    .Select(b => new { b.WorkspaceId })
+                    .FirstOrDefaultAsync(ct)
+                    ?? throw new InvalidOperationException("Board not found.");
+
+                var version = await _versions.GetWorkspaceVersionAsync(boardMeta.WorkspaceId);
+                var key = CacheKeys.ColumnsByBoard(boardId, version);
+
+                var columns = await _cache.GetOrSetAsync(key,
+                    async () => await _columnRepo.Query()
+                        .Where(c => c.BoardId == boardId)
+                        .OrderBy(c => c.Position)
+                        .Include(c => c.Tasks)
+                        .ToListAsync(ct),
+                    TimeSpan.FromMinutes(30));
 
                 return _mapper.Map<List<ReadColumnDto>>(columns);
 
@@ -77,8 +95,11 @@ namespace Clbio.Application.Services
                 // Cache Invalidation
                 await _invalidator.InvalidateWorkspace(board.WorkspaceId);
 
-                return _mapper.Map<ReadColumnDto>(column);
+                var readDto = _mapper.Map<ReadColumnDto>(column);
 
+                await _socketService.SendToWorkspaceAsync(board.WorkspaceId, "ColumnCreated", readDto, ct);
+
+                return readDto;
             }, _logger, "COLUMN_CREATE_FAILED");
         }
 
@@ -95,45 +116,68 @@ namespace Clbio.Application.Services
                 var column = await _columnRepo.GetByIdAsync(id, true, ct)
                              ?? throw new InvalidOperationException("Column not found.");
 
-                _mapper.Map(dto, column);
+                var columnDto = _mapper.Map(dto, column);
 
                 await _uow.SaveChangesAsync(ct);
 
                 // Cache Invalidation
                 var board = await _boardRepo.GetByIdAsync(column.BoardId, false, ct);
                 if (board != null)
+                {
                     await _invalidator.InvalidateWorkspace(board.WorkspaceId);
+                }
 
             }, _logger, "COLUMN_UPDATE_FAILED");
         }
 
         // ---------------------------------------------------------------------
-        // DELETE (Override)
+        // DELETE
         // ---------------------------------------------------------------------
-        public override async Task<Result> DeleteAsync(Guid id, CancellationToken ct = default)
+        public async Task<Result> DeleteAsync(Guid workspaceId, Guid boardId, Guid id, CancellationToken ct = default)
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
                 var column = await _columnRepo.GetByIdAsync(id, false, ct)
                              ?? throw new InvalidOperationException("Column not found");
 
-                var board = await _boardRepo.GetByIdAsync(column.BoardId, false, ct);
-
-                // delete related tasks
-                var tasks = await Repo<TaskItem>().FindAsync(t => t.ColumnId == id, true, ct);
-                foreach (var task in tasks)
+                if (column.BoardId != boardId)
                 {
-                    await _taskService.DeleteAsync(task.Id, ct);
+                    throw new InvalidOperationException("Column does not belong to the specified board.");
                 }
 
-                // delete column
+                var board = await _boardRepo.GetByIdAsync(boardId, false, ct);
+
+                if (board == null || board.WorkspaceId != workspaceId)
+                    throw new UnauthorizedAccessException("Column is outside the workspace scope.");
+
+                // delete related tasks
+                var taskIds = await _taskRepo.Query()
+                    .Where(t => t.ColumnId == id)
+                    .Select(t => t.Id)
+                    .ToListAsync(ct);
+
+                if (taskIds.Count != 0)
+                {
+                    await _uow.Repository<Comment>().Query()
+                        .Where(c => taskIds.Contains(c.TaskId))
+                        .ExecuteUpdateAsync(s => s.SetProperty(c => c.IsDeleted, true)
+                                                  .SetProperty(c => c.DeletedAt, DateTime.UtcNow), ct);
+
+                    await _uow.Repository<Attachment>().Query()
+                        .Where(a => taskIds.Contains(a.TaskId))
+                        .ExecuteUpdateAsync(s => s.SetProperty(a => a.IsDeleted, true)
+                                                  .SetProperty(a => a.DeletedAt, DateTime.UtcNow), ct);
+
+                    await _taskRepo.Query()
+                        .Where(t => t.ColumnId == id)
+                        .ExecuteUpdateAsync(s => s.SetProperty(t => t.IsDeleted, true)
+                                                  .SetProperty(t => t.DeletedAt, DateTime.UtcNow), ct);
+                }
+
                 await _columnRepo.DeleteAsync(id, ct);
                 await _uow.SaveChangesAsync(ct);
-
-                // Cache Invalidation
-                if (board != null)
-                    await _invalidator.InvalidateWorkspace(board.WorkspaceId);
-
+                await _invalidator.InvalidateWorkspace(workspaceId);
+                await _socketService.SendToWorkspaceAsync(workspaceId, "ColumnDeleted", new { Id = id, BoardId = board.Id }, ct);
             }, _logger, "COLUMN_DELETE_FAILED");
         }
 
@@ -170,7 +214,10 @@ namespace Clbio.Application.Services
                 // Cache Invalidation
                 var board = await _boardRepo.GetByIdAsync(boardId, false, ct);
                 if (board != null)
+                {
                     await _invalidator.InvalidateWorkspace(board.WorkspaceId);
+                    await _socketService.SendToWorkspaceAsync(board.WorkspaceId, "ColumnReordered", new { BoardId = boardId, ColumnOrder = columnOrder }, ct);
+                }
 
             }, _logger, "COLUMN_REORDER_FAILED");
         }

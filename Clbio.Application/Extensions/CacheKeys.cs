@@ -21,7 +21,7 @@ namespace Clbio.Application.Extensions
             => $"version:membership:{workspaceId}:{userId}";
 
         // ─────────────────────────────────────────────────────
-        // WORKSPACE
+        // WORKSPACE & MEMBERSHIP
         // ─────────────────────────────────────────────────────
         public static string Workspace(Guid workspaceId, long version) =>
             $"workspace:v{version}:{workspaceId}";
@@ -44,13 +44,28 @@ namespace Clbio.Application.Extensions
             => $"roleperms:global:{role}";
 
         // ─────────────────────────────────────────────────────
-        // BOARDS (only metadata)
+        // BOARDS
         // ─────────────────────────────────────────────────────
-        public static string Board(Guid boardId)
-            => $"board:{boardId}";
+        public static string Board(Guid boardId, long version)
+            => $"board:v{version}:{boardId}";
 
         public static string BoardsByWorkspace(Guid workspaceId, long version) =>
             $"boards:ws:v{version}:{workspaceId}";
+
+        // ─────────────────────────────────────────────────────
+        // COLUMNS
+        // ─────────────────────────────────────────────────────
+        public static string ColumnsByBoard(Guid boardId, long version)
+            => $"columns:board:v{version}:{boardId}";
+
+        // ─────────────────────────────────────────────────────
+        // TASKS
+        // ─────────────────────────────────────────────────────
+        public static string Task(Guid taskId, long version)
+            => $"task:v{version}:{taskId}";
+
+        public static string BoardTasks(Guid boardId, long version)
+            => $"tasks:board:v{version}:{boardId}";
 
         // ─────────────────────────────────────────────────────
         // NOTIFICATIONS 

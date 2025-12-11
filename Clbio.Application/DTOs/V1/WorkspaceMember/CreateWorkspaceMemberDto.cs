@@ -11,8 +11,10 @@ namespace Clbio.Application.DTOs.V1.WorkspaceMember
 
         [Required]
         [EmailAddress]
+        [MaxLength(100)]
         public string Email { get; set; } = string.Empty;
         [Required]
+        [EnumDataType(typeof(WorkspaceRole), ErrorMessage = "Invalid Role value.")]
         public WorkspaceRole Role { get; set; } = WorkspaceRole.Member;
     }
 }

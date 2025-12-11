@@ -7,6 +7,7 @@ namespace Clbio.Application.DTOs.V1.Auth
     public class VerifyEmailRequestDto : RequestDtoBase
     {
         [Required]
+        [MaxLength(200)]
         public string Token { get; set; } = null!;
     }
 }

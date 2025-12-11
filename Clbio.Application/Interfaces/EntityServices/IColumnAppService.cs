@@ -8,7 +8,7 @@ namespace Clbio.Application.Interfaces.EntityServices
         Task<Result<List<ReadColumnDto>>> GetAllAsync(Guid boardId, CancellationToken ct = default);
         Task<Result<ReadColumnDto>> CreateAsync(Guid workspaceId, CreateColumnDto dto, CancellationToken ct = default);
         Task<Result> UpdateAsync(Guid id, UpdateColumnDto dto, CancellationToken ct = default);
-        Task<Result> DeleteAsync(Guid id, CancellationToken ct = default);
+        Task<Result> DeleteAsync(Guid workspaceId, Guid boardId, Guid id, CancellationToken ct = default);
         Task<Result> ReorderAsync(Guid boardId, List<Guid> columnOrder, CancellationToken ct = default);
     }
 }

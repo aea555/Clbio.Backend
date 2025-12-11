@@ -2,6 +2,7 @@
 using Clbio.Abstractions.Interfaces;
 using Clbio.Abstractions.Interfaces.Cache; // Notification count cache'i için
 using Clbio.Abstractions.Interfaces.Repositories;
+using Clbio.Abstractions.Interfaces.Services;
 using Clbio.Application.DTOs.V1.Notification;
 using Clbio.Application.Extensions; // CacheKeys
 using Clbio.Application.Interfaces.EntityServices;
@@ -16,13 +17,42 @@ namespace Clbio.Application.Services
     public class NotificationService(
         IUnitOfWork uow,
         IMapper mapper,
+        ISocketService socketService,
         ICacheService cache,
         ILogger<NotificationService>? logger = null)
         : ServiceBase<Notification>(uow, logger), INotificationAppService
     {
         private readonly IMapper _mapper = mapper;
+        private readonly ISocketService _socketService = socketService;
         private readonly ICacheService _cache = cache;
         private readonly IRepository<Notification> _notifRepo = uow.Repository<Notification>();
+
+        public async Task SendNotificationAsync(Guid userId, string title, string message, CancellationToken ct = default)
+        {
+            try
+            {
+                var notification = new Notification
+                {
+                    UserId = userId,
+                    Title = title,
+                    MessageText = message,
+                    IsRead = false,
+                    CreatedAt = DateTime.UtcNow
+                };
+
+                await _notifRepo.AddAsync(notification, ct);
+                await _uow.SaveChangesAsync(ct);
+
+                await _cache.RemoveAsync(CacheKeys.NotificationCount(userId));
+
+                var dto = _mapper.Map<ReadNotificationDto>(notification);
+                await _socketService.SendToUserAsync(userId, "NotificationReceived", dto, ct);
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to send notification to user {UserId}", userId);
+            }
+        }
 
         public async Task<Result<(List<ReadNotificationDto> Items, int TotalCount)>> GetMyNotificationsPagedAsync(
             Guid userId,

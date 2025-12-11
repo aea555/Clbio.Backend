@@ -18,7 +18,7 @@ namespace Clbio.Application.DependencyInjection
             services.AddScoped<IWorkspaceAppService, WorkspaceService>();
             services.AddScoped<IBoardAppService, BoardService>();
             services.AddScoped<IColumnAppService, ColumnService>();
-            services.AddScoped<ITaskService, TaskService>();
+            services.AddScoped<ITaskAppService, TaskService>();
             services.AddScoped<IUserAppService, UserService>();
             services.AddScoped<IRoleAppService, RoleService>();
             services.AddScoped<IWorkspaceMemberAppService, WorkspaceMemberService>();

@@ -17,6 +17,9 @@ namespace Clbio.Application.Services
         IUnitOfWork uow,
         IColumnService columnService,
         ICacheInvalidationService invalidator,
+        ICacheService cache,
+        ICacheVersionService versions,
+        ISocketService socketService,
         IMapper mapper,
         ILogger<BoardService>? logger = null) : IBoardAppService
     {
@@ -25,9 +28,10 @@ namespace Clbio.Application.Services
         private readonly IRepository<Workspace> _workspaceRepo = uow.Repository<Workspace>();
         private readonly IRepository<Column> _columnRepo = uow.Repository<Column>();
 
-        private readonly IColumnService _columnService = columnService;
-
         private readonly ICacheInvalidationService _invalidator = invalidator;
+        private readonly ICacheService _cache = cache;
+        private readonly ICacheVersionService _versions = versions;
+        private readonly ISocketService _socketService = socketService;
         private readonly IMapper _mapper = mapper;
         private readonly ILogger<BoardService>? _logger = logger;
 
@@ -38,11 +42,17 @@ namespace Clbio.Application.Services
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
-                var boards = await _boardRepo.Query()
-                    .Where(b => b.WorkspaceId == workspaceId)
-                    .OrderBy(b => b.Order)
-                    .Include(b => b.Columns)
-                    .ToListAsync(ct);
+                var version = await _versions.GetWorkspaceVersionAsync(workspaceId);
+
+                var key = CacheKeys.BoardsByWorkspace(workspaceId, version);
+
+                var boards = await _cache.GetOrSetAsync(key,
+                    async () => await _boardRepo.Query()
+                        .Where(b => b.WorkspaceId == workspaceId)
+                        .OrderBy(b => b.Order)
+                        .Include(b => b.Columns)
+                        .ToListAsync(ct),
+                    TimeSpan.FromMinutes(30));
 
                 return boards.Select(_mapper.Map<ReadBoardDto>).ToList();
 
@@ -56,9 +66,19 @@ namespace Clbio.Application.Services
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
-                var board = await _boardRepo.Query()
-                    .Include(b => b.Columns)
-                    .FirstOrDefaultAsync(b => b.Id == boardId, ct);
+                var version = await _versions.GetWorkspaceVersionAsync(workspaceId);
+                var key = CacheKeys.Board(boardId, version);
+
+                var board = await _cache.GetOrSetAsync(key,
+                    async () =>
+                    {
+                        var entity = await _boardRepo.Query()
+                            .Include(b => b.Columns)
+                            .FirstOrDefaultAsync(b => b.Id == boardId, ct);
+                        return entity;
+                    },
+
+                TimeSpan.FromMinutes(30));
 
                 if (board == null)
                     return null;
@@ -97,7 +117,11 @@ namespace Clbio.Application.Services
                 // bump workspace version
                 await _invalidator.InvalidateWorkspace(dto.WorkspaceId);
 
-                return _mapper.Map<ReadBoardDto>(board);
+                var readDto = _mapper.Map<ReadBoardDto>(board);
+
+                await _socketService.SendToWorkspaceAsync(board.WorkspaceId, "BoardCreated", readDto, ct);
+
+                return readDto;
 
             }, _logger, "BOARD_CREATE_FAILED");
         }
@@ -121,6 +145,9 @@ namespace Clbio.Application.Services
 
                 await _invalidator.InvalidateWorkspace(board.WorkspaceId);
 
+                var readDto = _mapper.Map<ReadBoardDto>(board);
+
+                await _socketService.SendToWorkspaceAsync(workspaceId, "BoardUpdated", readDto, ct);
             }, _logger, "BOARD_UPDATE_FAILED");
         }
 
@@ -137,13 +164,43 @@ namespace Clbio.Application.Services
                 if (board.WorkspaceId != workspaceId)
                     throw new UnauthorizedAccessException("Board does not belong to the specified workspace.");
 
-                // delete related columns
-                var columns = await _columnRepo.Query()
+                var columnIds = await _columnRepo.Query()
                     .Where(c => c.BoardId == boardId)
+                    .Select(c => c.Id)
                     .ToListAsync(ct);
 
-                foreach (var col in columns)
-                    await _columnService.DeleteAsync(col.Id, ct);
+                if (columnIds.Count != 0)
+                {
+                    var taskIds = await uow.Repository<TaskItem>().Query()
+                        .Where(t => columnIds.Contains(t.ColumnId))
+                        .Select(t => t.Id)
+                        .ToListAsync(ct);
+
+                    if (taskIds.Count != 0)
+                    {
+                        var utcNow = DateTime.UtcNow;
+
+                        await uow.Repository<Comment>().Query()
+                            .Where(c => taskIds.Contains(c.TaskId))
+                            .ExecuteUpdateAsync(s => s.SetProperty(c => c.IsDeleted, true)
+                                                      .SetProperty(c => c.DeletedAt, utcNow), ct);
+
+                        await uow.Repository<Attachment>().Query()
+                            .Where(a => taskIds.Contains(a.TaskId))
+                            .ExecuteUpdateAsync(s => s.SetProperty(a => a.IsDeleted, true)
+                                                      .SetProperty(a => a.DeletedAt, utcNow), ct);
+
+                        await uow.Repository<TaskItem>().Query()
+                            .Where(t => taskIds.Contains(t.Id))
+                            .ExecuteUpdateAsync(s => s.SetProperty(t => t.IsDeleted, true)
+                                                      .SetProperty(t => t.DeletedAt, utcNow), ct);
+                    }
+
+                    await _columnRepo.Query()
+                        .Where(c => columnIds.Contains(c.Id))
+                        .ExecuteUpdateAsync(s => s.SetProperty(c => c.IsDeleted, true)
+                                                  .SetProperty(c => c.DeletedAt, DateTime.UtcNow), ct);
+                }
 
                 // delete board
                 await _boardRepo.DeleteAsync(boardId, ct);
@@ -151,6 +208,7 @@ namespace Clbio.Application.Services
 
                 await _invalidator.InvalidateWorkspace(workspaceId);
 
+                await _socketService.SendToWorkspaceAsync(workspaceId, "BoardDeleted", new { Id = boardId }, ct);
             }, _logger, "BOARD_DELETE_FAILED");
         }
 
@@ -193,6 +251,7 @@ namespace Clbio.Application.Services
                 await _uow.SaveChangesAsync(ct);
                 await _invalidator.InvalidateWorkspace(workspaceId);
 
+                await _socketService.SendToWorkspaceAsync(workspaceId, "BoardReordered", boardOrder, ct);
             }, _logger, "BOARD_REORDER_FAILED");
         }
     }

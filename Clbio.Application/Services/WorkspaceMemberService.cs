@@ -16,6 +16,7 @@ namespace Clbio.Application.Services
 {
     public class WorkspaceMemberService(
         IUnitOfWork uow,
+        INotificationAppService notificationService,
         IMapper mapper,
         ICacheInvalidationService invalidator,
         ISocketService socketService,
@@ -24,12 +25,14 @@ namespace Clbio.Application.Services
     {
         private readonly IUnitOfWork _uow = uow;
         private readonly ILogger<IWorkspaceMemberAppService>? _logger = logger;
+        private readonly INotificationAppService _notificationService = notificationService;
         private readonly IMapper _mapper = mapper;
         private readonly ICacheInvalidationService _invalidator = invalidator;
         private readonly ISocketService _socketService = socketService;
 
         private readonly IRepository<WorkspaceMember> _memberRepo = uow.Repository<WorkspaceMember>();
         private readonly IRepository<User> _userRepo = uow.Repository<User>();
+        private readonly IRepository<Workspace> _workspaceRepo = uow.Repository<Workspace>();
 
         public async Task<Result<List<ReadWorkspaceMemberDto>>> GetByWorkspaceAsync(Guid workspaceId, CancellationToken ct = default)
         {
@@ -46,18 +49,26 @@ namespace Clbio.Application.Services
         // ---------------------------------------------------------------------
         // ADD MEMBER 
         // ---------------------------------------------------------------------
-        public async Task<Result<ReadWorkspaceMemberDto>> AddMemberAsync(Guid workspaceId, CreateWorkspaceMemberDto dto, CancellationToken ct = default)
+        public async Task<Result<ReadWorkspaceMemberDto>> AddMemberAsync(Guid workspaceId, CreateWorkspaceMemberDto dto, Guid actorId, CancellationToken ct = default)
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
+                var actor = await _userRepo.GetByIdAsync(actorId, false, ct)
+                            ?? throw new InvalidOperationException($"Actor not found");
+
                 // 1. find by email
-                var user = await _userRepo.Query()
+                var targetUser = await _userRepo.Query()
                     .FirstOrDefaultAsync(u => u.Email == dto.Email, ct)
                     ?? throw new InvalidOperationException($"User with email '{dto.Email}' not found.");
 
+                var workspaceName = await _workspaceRepo.Query()
+                    .Where(w => w.Id == workspaceId)
+                    .Select(w => w.Name)
+                    .FirstOrDefaultAsync(ct);
+
                 // 2. already a member?
                 var exists = await _memberRepo.Query()
-                    .AnyAsync(m => m.WorkspaceId == workspaceId && m.UserId == user.Id, ct);
+                    .AnyAsync(m => m.WorkspaceId == workspaceId && m.UserId == targetUser.Id, ct);
 
                 if (exists) throw new InvalidOperationException("User is already a member.");
 
@@ -65,13 +76,13 @@ namespace Clbio.Application.Services
                 var member = new WorkspaceMember
                 {
                     WorkspaceId = workspaceId,
-                    UserId = user.Id,
+                    UserId = targetUser.Id,
                     Role = dto.Role
                 };
 
                 await _memberRepo.AddAsync(member, ct);
                 await _uow.SaveChangesAsync(ct);
-                await _invalidator.InvalidateMembership(user.Id, workspaceId);
+                await _invalidator.InvalidateMembership(targetUser.Id, workspaceId);
                 await _invalidator.InvalidateWorkspace(workspaceId);
 
                 // 4. Return & Notify
@@ -80,8 +91,15 @@ namespace Clbio.Application.Services
                     .FirstAsync(m => m.Id == member.Id, ct);
 
                 var readDto = _mapper.Map<ReadWorkspaceMemberDto>(createdMember);
+
+                await _notificationService.SendNotificationAsync(
+                    targetUser.Id,
+                    "Workspace Invitation",
+                    $"{actor?.DisplayName} added you to workspace '{workspaceName}' as {dto.Role}.",
+                    ct);
+
                 await _socketService.SendToWorkspaceAsync(workspaceId, "MemberAdded", readDto, ct);
-                await _socketService.SendToUserAsync(user.Id, "WorkspaceInvitationReceived", new { workspaceId }, ct);
+                await _socketService.SendToUserAsync(targetUser.Id, "WorkspaceInvitationReceived", new { workspaceId }, ct);
 
                 return readDto;
             }, _logger, "MEMBER_ADD_FAILED");
@@ -96,6 +114,11 @@ namespace Clbio.Application.Services
             {
                 if (targetUserId == actorUserId)
                     throw new InvalidOperationException("You cannot change your own role.");
+
+                var workspaceName = await _workspaceRepo.Query()
+                    .Where(w => w.Id == workspaceId)
+                    .Select(w => w.Name)
+                    .FirstOrDefaultAsync(ct);
 
                 // fetch actor and target
                 var (actorMember, targetMember, actorUser) = await GetActorAndTargetAsync(workspaceId, actorUserId, targetUserId, ct);
@@ -123,6 +146,16 @@ namespace Clbio.Application.Services
                 await _invalidator.InvalidateMembership(targetUserId, workspaceId);
 
                 var readDto = _mapper.Map<ReadWorkspaceMemberDto>(targetMember);
+
+                if (targetUserId != actorUserId)
+                {
+                    await _notificationService.SendNotificationAsync(
+                        targetUserId,
+                        "Role Updated",
+                        $"{actorUser.DisplayName} changed your role in '{workspaceName}' to {newRole}.",
+                        ct);
+                }
+
                 await _socketService.SendToWorkspaceAsync(workspaceId, "MemberUpdated", readDto, ct);
 
                 return readDto;
@@ -147,8 +180,22 @@ namespace Clbio.Application.Services
                     CheckHierarchy(actorMember!.Role, targetMember!.Role, "remove");
                 }
 
+                var workspaceName = await _workspaceRepo.Query()
+                    .Where(w => w.Id == workspaceId)
+                    .Select(w => w.Name)
+                    .FirstOrDefaultAsync(ct);
+
                 // remove
                 await PerformRemove(workspaceId, targetMember, ct);
+
+                if (targetUserId != actorUserId)
+                {
+                    await _notificationService.SendNotificationAsync(
+                        targetUserId,
+                        "Removed from Workspace",
+                        $"{actorUser.DisplayName} removed you from workspace '{workspaceName}'.",
+                        ct);
+                }
 
                 // notify the user they have been KICKED OUT
                 await _socketService.SendToUserAsync(targetUserId, "RemovedFromWorkspace", new { workspaceId }, ct);
