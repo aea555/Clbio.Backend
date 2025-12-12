@@ -1,5 +1,6 @@
-﻿using Clbio.Domain.Entities;
-using Clbio.Domain.Entities.Base;
+﻿using Clbio.Domain.Entities.V1;
+using Clbio.Domain.Entities.V1.Auth;
+using Clbio.Domain.Entities.V1.Base;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 
@@ -26,6 +27,7 @@ namespace Clbio.Infrastructure.Data
             // Apply the soft delete query filter globally
             ApplyGlobalQueryFilters(modelBuilder);
 
+            // apply custom fluent api configs
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
             foreach (var foreignKey in modelBuilder.Model.GetEntityTypes()
@@ -68,6 +70,7 @@ namespace Clbio.Infrastructure.Data
                 {
                     case EntityState.Added:
                         entry.Entity.CreatedAt = utcNow;
+                        entry.Entity.IsDeleted = false;
                         break;
 
                     case EntityState.Modified:
@@ -77,6 +80,7 @@ namespace Clbio.Infrastructure.Data
                     case EntityState.Deleted:
                         entry.State = EntityState.Modified;
                         entry.Entity.IsDeleted = true;
+                        entry.Entity.DeletedAt = utcNow;
                         entry.Entity.UpdatedAt = utcNow;
                         break;
                 }
@@ -93,6 +97,15 @@ namespace Clbio.Infrastructure.Data
         public DbSet<TaskItem> Tasks { get; set; } = null!;
         public DbSet<Comment> Comments { get; set; } = null!;
         public DbSet<Notification> Notifications { get; set; } = null!;
-
+        public DbSet<Attachment> Attachments { get; set; } = null!;
+        public DbSet<ActivityLog> ActivityLog { get; set; } = null!;
+        public DbSet<PermissionEntity> Permissions { get; set; } = null!;
+        public DbSet<RoleEntity> Roles { get; set; } = null!;
+        public DbSet<RolePermissionEntity> RolePermissions { get; set; } = null!;
+        public DbSet<RefreshToken> RefreshTokens { get; set; } = null!;
+        public DbSet<EmailVerificationToken> EmailVerificationTokens { get; set; } = null!;
+        public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
+        public DbSet<PasswordResetAttempt> PasswordResetAttempts { get; set; } = null!;
+        public DbSet<LoginAttempt> LoginAttempts { get; set; } = null!;
     }
 }

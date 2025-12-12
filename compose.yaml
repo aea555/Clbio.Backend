@@ -1,6 +1,6 @@
 services:
   postgres:
-    image: postgres:latest
+    image: postgres:16
     container_name: clbio-db
     restart: unless-stopped
     ports:
@@ -11,11 +11,18 @@ services:
       - postgres-data:/var/lib/postgresql/data
     networks:
       - clbio-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   pgadmin:
     image: dpage/pgadmin4:latest
     container_name: clbio-pgadmin
     restart: unless-stopped
+    volumes:
+      - ./servers.json:/pgadmin4/servers.json
     depends_on:
       - postgres
     ports:
@@ -24,14 +31,31 @@ services:
       - .env
     networks:
       - clbio-net
+  
+  redis:
+    image: redis:7
+    container_name: clbio-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - clbio-net
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   clbio-api:
     build:
       context: .
-      dockerfile: Clbio.API/Dockerfile
+      dockerfile: Dockerfile
     container_name: clbio-api
+    restart: unless-stopped
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     ports:
       - "8080:8080"
     env_file:
@@ -39,8 +63,15 @@ services:
     environment:
       - ConnectionStrings__DefaultConnection=${DB_CONNECTION_DOCKER}
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+      - RedisConnection=redis:6379  
     networks:
-      - clbio-net
+      - clbio-net  
+    healthcheck:
+        test: ["CMD-SHELL", "curl -f http://localhost:8080/dev/health || exit 1"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+        start_period: 20s
 
 volumes:
   postgres-data:

@@ -1,55 +1,37 @@
-using Clbio.Infrastructure.Data;
-using Microsoft.EntityFrameworkCore;
+using Clbio.API.DependencyInjection;
+using Clbio.API.Extensions;
+using Clbio.API.Hubs;
+using Clbio.API.Middleware;
 
-var builder = WebApplication.CreateBuilder(args);
+DotNetEnv.Env.Load();
 
-// Add services to the container.
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-builder.Services.AddOpenApi();
-
-string connectionString;
-
-if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
-{
-    connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_DOCKER");
-}
-else
-{
-    connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_LOCAL") ??
-                       builder.Configuration.GetConnectionString("DefaultConnection");
-}
-
-// Add DbContext
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(connectionString));
+var builder = WebApplication.CreateBuilder(args)
+    .ConfigureBuilder()
+    .ConfigureBuilderServices();
 
 var app = builder.Build();
 
-// auto-migrate on start
-using (var scope = app.Services.CreateScope())
+app.ApplyMigrations();
+await app.AddRolePermissionSeederAsync();
+
+//security and middlewares
+if (!app.Environment.IsEnvironment("Testing"))
+    app.UseCors("AllowFrontendDev");
+
+app.UseApiSecurity(app.Environment);
+app.UseMiddleware<ErrorHandlerMiddleware>();
+
+app.UseRouting();
+
+if (!app.Environment.IsEnvironment("Testing"))
 {
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var env = scope.ServiceProvider.GetRequiredService<IWebHostEnvironment>();
-
-    if (env.IsDevelopment())
-    {
-        try
-        {
-            db.Database.Migrate();
-            Console.WriteLine("[Development] Database migrated successfully.");
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[Development] Database migration failed: {ex.Message}");
-            throw;
-        }
-    }
-    else
-    {
-        Console.WriteLine("Skipping automatic migrations (Production environment).");
-    }
+    app.UseAuthentication();
+    app.UseAuthorization();
 }
+app.UseRateLimiter();
 
+app.MapControllers();
+app.MapHub<AppHub>("/hubs/app");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -57,7 +39,30 @@ if (app.Environment.IsDevelopment())
     app.MapOpenApi();
 }
 
-app.UseHttpsRedirection();
+/*** DEV ENDPOINTS ***/
+if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))
+{
+    // --- health check --- //
+    app.MapGet("/dev/health", () => Results.Ok("Healthy"));
+
+    // --- see env --- //
+    app.MapGet("/dev/env", (IWebHostEnvironment env) => Results.Ok(env.EnvironmentName));
+
+    // --- payload size test --- //
+    app.MapPost("/dev/payloadtest", async (HttpContext context) =>
+    {
+        using var reader = new StreamReader(context.Request.Body);
+        var body = await reader.ReadToEndAsync();
+        return Results.Ok(new { length = body.Length });
+    });
+
+    // --- error handler test --- //
+    app.MapGet("/dev/errortest", () =>
+    {
+        throw new Exception("Gotta throw here");
+    });
+}
 
 app.Run();
 
+public partial class Program { }

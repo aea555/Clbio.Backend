@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Clbio.Domain\Clbio.Domain.csproj" />
+    <ProjectReference Include="..\Clbio.Shared\Clbio.Shared.csproj" />
   </ItemGroup>
 
   <PropertyGroup>
