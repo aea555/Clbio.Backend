@@ -16,7 +16,7 @@ namespace Clbio.Application.Services
 {
     public class ColumnService(
         IUnitOfWork uow,
-        ITaskService taskService,
+        ITaskAppService taskService,
         ICacheInvalidationService invalidator,
         ICacheService cache,
         ICacheVersionService versions,
@@ -25,7 +25,7 @@ namespace Clbio.Application.Services
         ILogger<ColumnService>? logger = null)
         : ServiceBase<Column>(uow, logger), IColumnAppService
     {
-        private readonly ITaskService _taskService = taskService;
+        private readonly ITaskAppService _taskService = taskService;
         private readonly ICacheInvalidationService _invalidator = invalidator;
         private readonly ICacheService _cache = cache;
         private readonly ICacheVersionService _versions = versions;

@@ -19,7 +19,6 @@ namespace Clbio.Application.Services
         ICacheService cache,
         ICacheInvalidationService invalidator,
         ICacheVersionService versions,
-        IBoardService boardService,
         IMapper mapper,
         ILogger<WorkspaceService>? logger = null) : IWorkspaceAppService
     {
@@ -28,8 +27,6 @@ namespace Clbio.Application.Services
         private readonly IRepository<WorkspaceMember> _workspaceMemberRepo = uow.Repository<WorkspaceMember>();
         private readonly IRepository<User> _userRepo = uow.Repository<User>();
         private readonly IRepository<Board> _boardRepo = uow.Repository<Board>();
-
-        private readonly IBoardService _boardService = boardService;
 
         private readonly ICacheService _cache = cache;
         private readonly ICacheInvalidationService _invalidator = invalidator;

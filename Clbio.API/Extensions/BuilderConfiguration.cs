@@ -82,7 +82,8 @@ namespace Clbio.API.Extensions
 
             // add services
             builder.Services
-                .AddOpenApi()
+                .AddEndpointsApiExplorer()
+                .AddSwaggerGen()
                 .AddClbio(builder.Configuration)
                 .AddCorsPolicy()
                 .AddGlobalRateLimiter()

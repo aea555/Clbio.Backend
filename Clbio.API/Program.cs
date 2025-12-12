@@ -36,7 +36,8 @@ app.MapHub<AppHub>("/hubs/app");
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.MapOpenApi();
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
 /*** DEV ENDPOINTS ***/

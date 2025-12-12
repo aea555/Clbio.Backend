@@ -56,6 +56,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
     ports:
       - "8080:8080"
     env_file:
@@ -63,7 +65,7 @@ services:
     environment:
       - ConnectionStrings__DefaultConnection=${DB_CONNECTION_DOCKER}
       - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
-      - RedisConnection=redis:6379  
+      - ConnectionStrings__RedisConnection=redis:6379,abortConnect=false
     networks:
       - clbio-net  
     healthcheck:
