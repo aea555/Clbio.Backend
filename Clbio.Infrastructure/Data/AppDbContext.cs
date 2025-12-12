@@ -27,6 +27,7 @@ namespace Clbio.Infrastructure.Data
             // Apply the soft delete query filter globally
             ApplyGlobalQueryFilters(modelBuilder);
 
+            // apply custom fluent api configs
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
 
             foreach (var foreignKey in modelBuilder.Model.GetEntityTypes()
@@ -69,6 +70,7 @@ namespace Clbio.Infrastructure.Data
                 {
                     case EntityState.Added:
                         entry.Entity.CreatedAt = utcNow;
+                        entry.Entity.IsDeleted = false;
                         break;
 
                     case EntityState.Modified:
@@ -78,6 +80,7 @@ namespace Clbio.Infrastructure.Data
                     case EntityState.Deleted:
                         entry.State = EntityState.Modified;
                         entry.Entity.IsDeleted = true;
+                        entry.Entity.DeletedAt = utcNow;
                         entry.Entity.UpdatedAt = utcNow;
                         break;
                 }

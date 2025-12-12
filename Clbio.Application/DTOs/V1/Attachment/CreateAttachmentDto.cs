@@ -11,6 +11,7 @@ namespace Clbio.Application.DTOs.V1.Attachment
 
         [Required]
         [Url]
+        [MaxLength(2048)]
         public string Url { get; set; } = null!;
 
         [Required]

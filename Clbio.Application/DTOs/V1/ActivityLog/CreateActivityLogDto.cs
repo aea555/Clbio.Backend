@@ -23,9 +23,13 @@ namespace Clbio.Application.DTOs.V1.ActivityLog
         public Guid EntityId { get; set; }
 
         [Required]
+        [StringLength(1000)]
         public string Metadata { get; set; } = null!;
 
+        [MaxLength(50)]
         public string? IpAddress { get; set; }
+
+        [MaxLength(1024)]
         public string? UserAgent { get; set; }
     }
 }

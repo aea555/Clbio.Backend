@@ -10,6 +10,7 @@ namespace Clbio.Domain.Entities.V1.Base
         public Guid Id { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
+        public DateTime? DeletedAt { get; set; }
         public bool IsDeleted { get; set; } = false;
         public Guid? CreatedBy { get; set; }
         public Guid? UpdatedBy { get; set; }

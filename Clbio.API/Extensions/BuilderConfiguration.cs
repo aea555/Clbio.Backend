@@ -1,5 +1,8 @@
-﻿using Clbio.API.DependencyInjection;
+﻿using Clbio.Abstractions.Interfaces.Services;
+using Clbio.API.DependencyInjection;
+using Clbio.API.Services;
 using Clbio.Application.Settings;
+using StackExchange.Redis;
 
 namespace Clbio.API.Extensions
 {
@@ -84,6 +87,23 @@ namespace Clbio.API.Extensions
                 .AddCorsPolicy()
                 .AddGlobalRateLimiter()
                 .AddControllers();
+
+            // SignalR
+
+            // conn string
+            var redisConn = builder.Configuration.GetConnectionString("RedisConnection")
+                    ?? "localhost:6379";
+
+            // Add SignalR and Redis backplane
+            builder.Services.AddSignalR()
+                .AddStackExchangeRedis(redisConn, options =>
+                {
+                    // Prefix to not mix keys
+                    options.Configuration.ChannelPrefix = RedisChannel.Literal("ClbioSocket");
+                });
+
+            // add it
+            builder.Services.AddScoped<ISocketService, SignalRSocketService>();
 
             return builder;
         }

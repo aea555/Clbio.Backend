@@ -10,7 +10,8 @@ namespace Clbio.Application.Mappings.V1
         {
             CreateMap<CreateWorkspaceDto, Workspace>()
                 .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.Owner, opt => opt.Ignore()) // Owner resolved separately
+                .ForMember(dest => dest.OwnerId, opt => opt.Ignore())
+                .ForMember(dest => dest.Owner, opt => opt.Ignore())
                 .ForMember(dest => dest.Members, opt => opt.Ignore())
                 .ForMember(dest => dest.Boards, opt => opt.Ignore());
 

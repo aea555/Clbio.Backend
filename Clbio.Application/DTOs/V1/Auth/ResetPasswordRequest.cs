@@ -6,6 +6,7 @@ namespace Clbio.Application.DTOs.V1.Auth
     public class ResetPasswordRequestDto : RequestDtoBase
     {
         [Required]
+        [MaxLength(200)]
         public string Token { get; set; } = null!;
 
         [Required]

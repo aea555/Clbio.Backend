@@ -1,4 +1,5 @@
 ﻿using Clbio.Abstractions.Interfaces.Cache;
+using Clbio.Application.Extensions;
 using Clbio.Domain.Enums;
 using StackExchange.Redis;
 
@@ -6,51 +7,54 @@ namespace Clbio.Application.Services.Cache
 {
     public class RedisCacheVersionService(IConnectionMultiplexer redis) : ICacheVersionService
     {
-        private readonly IConnectionMultiplexer _redis = redis;
+        private readonly IDatabase _db = redis.GetDatabase();
 
-        private StackExchange.Redis.IDatabase Db => _redis.GetDatabase();
-
+        // ------------------------------------------------------------
+        // WORKSPACE VERSION
+        // ------------------------------------------------------------
         public Task<long> GetWorkspaceVersionAsync(Guid workspaceId)
-        {
-            var key = $"version:workspace:{workspaceId}";
-            return GetOrInitVersion(key);
-        }
+            => GetOrInitVersionAsync(CacheKeys.WorkspaceVersionKey(workspaceId));
 
         public Task<long> BumpWorkspaceVersionAsync(Guid workspaceId)
-        {
-            var key = $"version:workspace:{workspaceId}";
-            return Db.StringIncrementAsync(key);
-        }
+            => _db.StringIncrementAsync(CacheKeys.WorkspaceVersionKey(workspaceId));
 
+        // ------------------------------------------------------------
+        // WORKSPACE ROLE VERSION
+        // ------------------------------------------------------------
         public Task<long> GetWorkspaceRoleVersionAsync(WorkspaceRole role)
-        {
-            var key = $"version:wsrole:{role}";
-            return GetOrInitVersion(key);
-        }
+            => GetOrInitVersionAsync(CacheKeys.WorkspaceRoleVersionKey(role));
 
         public Task<long> BumpWorkspaceRoleVersionAsync(WorkspaceRole role)
-        {
-            var key = $"version:wsrole:{role}";
-            return Db.StringIncrementAsync(key);
-        }
+            => _db.StringIncrementAsync(CacheKeys.WorkspaceRoleVersionKey(role));
 
-        private async Task<long> GetOrInitVersion(string key)
+        // ------------------------------------------------------------
+        // MEMBERSHIP VERSION 
+        // ------------------------------------------------------------
+        public Task<long> GetMembershipVersionAsync(Guid userId, Guid workspaceId)
+            => GetOrInitVersionAsync(CacheKeys.MembershipVersionKey(userId, workspaceId));
+
+        public Task<long> IncrementMembershipVersionAsync(Guid userId, Guid workspaceId)
+            => _db.StringIncrementAsync(CacheKeys.MembershipVersionKey(userId, workspaceId));
+
+        // ------------------------------------------------------------
+        // Generic version helper
+        // ------------------------------------------------------------
+        private async Task<long> GetOrInitVersionAsync(string key)
         {
-            var value = await Db.StringGetAsync(key);
-            if (value.IsNullOrEmpty)
+            var value = await _db.StringGetAsync(key);
+
+            if (!value.HasValue)
             {
-                // Default version 1
-                await Db.StringSetAsync(key, 1);
+                await _db.StringSetAsync(key, 1);
                 return 1;
             }
 
-            if (long.TryParse(value!, out var result))
-                return result;
+            if (long.TryParse(value.ToString(), out var parsed))
+                return parsed;
 
-            // Fallback: reset to 1 if its corrupted
-            await Db.StringSetAsync(key, 1);
+            // corrupted → reset
+            await _db.StringSetAsync(key, 1);
             return 1;
         }
     }
-
 }

@@ -1,5 +1,6 @@
 using Clbio.API.DependencyInjection;
 using Clbio.API.Extensions;
+using Clbio.API.Hubs;
 using Clbio.API.Middleware;
 
 DotNetEnv.Env.Load();
@@ -17,7 +18,6 @@ await app.AddRolePermissionSeederAsync();
 if (!app.Environment.IsEnvironment("Testing"))
     app.UseCors("AllowFrontendDev");
 
-app.UseRateLimiter();
 app.UseApiSecurity(app.Environment);
 app.UseMiddleware<ErrorHandlerMiddleware>();
 
@@ -26,10 +26,12 @@ app.UseRouting();
 if (!app.Environment.IsEnvironment("Testing"))
 {
     app.UseAuthentication();
+    app.UseAuthorization();
 }
-app.UseAuthorization();
+app.UseRateLimiter();
 
 app.MapControllers();
+app.MapHub<AppHub>("/hubs/app");
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

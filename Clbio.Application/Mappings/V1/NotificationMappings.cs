@@ -13,7 +13,7 @@ namespace Clbio.Application.Mappings.V1
                 .ForMember(dest => dest.User, opt => opt.Ignore());
 
             CreateMap<UpdateNotificationDto, Notification>()
-                .ForMember(dest => dest.Message, opt => opt.Ignore())
+                .ForMember(dest => dest.MessageText, opt => opt.Ignore())
                 .ForMember(dest => dest.UserId, opt => opt.Ignore())
                 .ForMember(dest => dest.User, opt => opt.Ignore());
 

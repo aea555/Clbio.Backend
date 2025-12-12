@@ -8,6 +8,7 @@ namespace Clbio.Domain.Entities.V1
         public string? Description { get; set; }
         public Guid WorkspaceId { get; set; }
         public Workspace Workspace { get; set; } = null!;
+        public int Order { get; set; }
         public ICollection<Column> Columns { get; set; } = [];
     }
 }

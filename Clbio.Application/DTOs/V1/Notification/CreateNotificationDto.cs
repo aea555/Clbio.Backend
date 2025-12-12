@@ -10,6 +10,10 @@ namespace Clbio.Application.DTOs.V1.Notification
 
         [Required]
         [StringLength(500, MinimumLength = 1)]
-        public string Message { get; set; } = null!;
+        public string MessageText { get; set; } = null!;
+
+        [Required]
+        [StringLength(200, MinimumLength = 1)]
+        public string Title { get; set; } = null!;
     }
 }

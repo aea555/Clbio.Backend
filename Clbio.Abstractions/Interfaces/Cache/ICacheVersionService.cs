@@ -8,5 +8,7 @@ namespace Clbio.Abstractions.Interfaces.Cache
         Task<long> BumpWorkspaceVersionAsync(Guid workspaceId);
         Task<long> GetWorkspaceRoleVersionAsync(WorkspaceRole role);
         Task<long> BumpWorkspaceRoleVersionAsync(WorkspaceRole role);
+        Task<long> GetMembershipVersionAsync(Guid userId, Guid workspaceId);
+        Task<long> IncrementMembershipVersionAsync(Guid userId, Guid workspaceId);
     }
 }
