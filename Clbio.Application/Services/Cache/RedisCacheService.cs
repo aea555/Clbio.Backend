@@ -5,27 +5,26 @@ using System.Text.Json;
 
 namespace Clbio.Application.Services.Cache
 {
-    public class RedisCacheService(IDistributedCache cache, IConnectionMultiplexer redis) : ICacheService
+    public class RedisCacheService(IConnectionMultiplexer redis) : ICacheService
     {
-        private readonly IDistributedCache _cache = cache;
         private readonly IConnectionMultiplexer _redis = redis;
+        private IDatabase Db => _redis.GetDatabase();
 
         public async Task<T?> GetAsync<T>(string key)
         {
-            var data = await _cache.GetStringAsync(key);
-            return data == null ? default : JsonSerializer.Deserialize<T>(data);
+            var data = await Db.StringGetAsync(key);
+            
+            if (!data.HasValue) return default;
+            
+            return JsonSerializer.Deserialize<T>(data!);
         }
 
         public async Task SetAsync<T>(string key, T value, TimeSpan? expiration = null)
         {
             var json = JsonSerializer.Serialize(value);
+            var expiry = expiration ?? TimeSpan.FromMinutes(30);
 
-            var options = new DistributedCacheEntryOptions
-            {
-                AbsoluteExpirationRelativeToNow = expiration ?? TimeSpan.FromMinutes(30)
-            };
-
-            await _cache.SetStringAsync(key, json, options);
+            await Db.StringSetAsync(key, json, expiry);
         }
 
         // --------------------------------------------------------------------
@@ -33,15 +32,12 @@ namespace Clbio.Application.Services.Cache
         // --------------------------------------------------------------------
         public async Task<List<T?>> GetManyAsync<T>(IEnumerable<string> keys)
         {
-            var db = _redis.GetDatabase();
             var redisKeys = keys.Select(k => (RedisKey)k).ToArray();
-
-            var results = await db.StringGetAsync(redisKeys);
+            
+            var results = await Db.StringGetAsync(redisKeys);
 
             return results
-                .Select(r => r.HasValue
-                    ? JsonSerializer.Deserialize<T>(r!)
-                    : default)
+                .Select(r => r.HasValue ? JsonSerializer.Deserialize<T>(r!) : default)
                 .ToList();
         }
 
@@ -50,17 +46,18 @@ namespace Clbio.Application.Services.Cache
         // --------------------------------------------------------------------
         public async Task SetManyAsync<T>(Dictionary<string, T> values, TimeSpan? expiration = null)
         {
-            var db = _redis.GetDatabase();
             var expiry = expiration ?? TimeSpan.FromMinutes(30);
-
+            
+            var batch = Db.CreateBatch();
             var tasks = new List<Task>();
 
             foreach (var kvp in values)
             {
                 var json = JsonSerializer.Serialize(kvp.Value);
-                tasks.Add(db.StringSetAsync(kvp.Key, json, expiry));
+                tasks.Add(batch.StringSetAsync(kvp.Key, json, expiry));
             }
 
+            batch.Execute();
             await Task.WhenAll(tasks);
         }
 
@@ -76,6 +73,6 @@ namespace Clbio.Application.Services.Cache
         }
 
         public Task RemoveAsync(string key)
-            => _cache.RemoveAsync(key);
+            => Db.KeyDeleteAsync(key);
     }
 }
