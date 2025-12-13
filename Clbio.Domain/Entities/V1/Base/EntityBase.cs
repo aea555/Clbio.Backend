@@ -6,8 +6,7 @@ namespace Clbio.Domain.Entities.V1.Base
     public abstract class EntityBase
     {
         [Key]
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        public Guid Id { get; set; }
+        public Guid Id { get; set; } = Guid.NewGuid();
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }
         public DateTime? DeletedAt { get; set; }

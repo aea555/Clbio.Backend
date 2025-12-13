@@ -1,4 +1,5 @@
-﻿using Clbio.Abstractions.Interfaces.Services;
+﻿using System.Security.Claims;
+using Clbio.Abstractions.Interfaces.Services;
 using Clbio.Domain.Enums;
 using Clbio.Domain.Extensions;
 using Microsoft.AspNetCore.Mvc;
@@ -19,10 +20,18 @@ namespace Clbio.API.Extensions.Attributes
         {
             var http = context.HttpContext;
 
+            if (http.User.Identity?.IsAuthenticated != true)
+            {
+                context.Result = new UnauthorizedResult();
+                return;
+            }
+
             //-------------------------------------------------------------
             // 1. Extract user ID from JWT
             //-------------------------------------------------------------
             var userIdStr = http.User.FindFirst("sub")?.Value
+                         ?? http.User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                         ?? http.User.FindFirst("id")?.Value
                          ?? http.User.FindFirst("userId")?.Value;
 
             if (userIdStr == null || !Guid.TryParse(userIdStr, out Guid userId))
@@ -36,8 +45,8 @@ namespace Clbio.API.Extensions.Attributes
             //-------------------------------------------------------------
             Guid? workspaceId = null;
 
-            if (PermissionMetadata.Scopes[Permission] == PermissionScope.Workspace)
-            {
+            if (PermissionMetadata.Scopes.TryGetValue(Permission, out var scope) && scope == PermissionScope.Workspace) {
+                
                 // Route param takes priority if supplied
                 if (WorkspaceIdRouteParam != null &&
                     context.RouteData.Values.TryGetValue(WorkspaceIdRouteParam, out var raw1) &&

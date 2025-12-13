@@ -11,6 +11,9 @@ namespace Clbio.API.Extensions
             // var validIssuer = config["Auth:Jwt:Issuer"];
             // var validAudience = config["Auth:Jwt:Audience"];
             var secret = config["Auth:Jwt:Key"] ?? throw new Exception("Couldn't get JWT environment variables.");
+            var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+
+            bool requireHttps = env != "Development" && env != "Testing";
 
             services.AddAuthentication(options =>
             {
@@ -20,7 +23,7 @@ namespace Clbio.API.Extensions
             .AddJwtBearer(options =>
             {
 
-                options.RequireHttpsMetadata = true;
+                options.RequireHttpsMetadata = requireHttps;
                 options.SaveToken = false;
                 options.TokenValidationParameters = new TokenValidationParameters
                 {

@@ -67,8 +67,8 @@ public sealed class EmailVerificationService(
             await _uow.SaveChangesAsync(ct);
 
             // Build verification url
-            var baseUrl = _config["App:BaseUrl"] ?? "https://localhost:8080";
-            var verifyUrl = $"{baseUrl}/verify-email?token={rawToken}";
+            var baseUrl = _config["App:BaseUrl"] ?? "http://localhost:8080";
+            var verifyUrl = $"{baseUrl}/api/Auth/verify-email?token={rawToken}";
 
             // Email
             var subject = "Verify your email";

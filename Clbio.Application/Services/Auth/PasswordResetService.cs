@@ -97,7 +97,7 @@ namespace Clbio.Application.Services.Auth
                 await _uow.SaveChangesAsync(ct);
 
                 var baseUrl = _config["App:BaseUrl"] ?? "https://localhost:8080";
-                var resetUrl = $"{baseUrl}/reset-password?token={rawToken}";
+                var resetUrl = $"{baseUrl}/api/Auth/reset-password?token={rawToken}";
 
                 var subject = "Reset your password";
                 var body = $@"

@@ -14,30 +14,27 @@ var app = builder.Build();
 app.ApplyMigrations();
 await app.AddRolePermissionSeederAsync();
 
-//security and middlewares
-if (!app.Environment.IsEnvironment("Testing"))
-    app.UseCors("AllowFrontendDev");
-
-app.UseApiSecurity(app.Environment);
 app.UseMiddleware<ErrorHandlerMiddleware>();
-
+app.UseApiSecurity(app.Environment);
 app.UseRouting();
 
 if (!app.Environment.IsEnvironment("Testing"))
 {
+    app.UseCors("AllowFrontendDev");
     app.UseAuthentication();
     app.UseAuthorization();
 }
+
 app.UseRateLimiter();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
 
 app.MapControllers();
 app.MapHub<AppHub>("/hubs/app");
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
 
 /*** DEV ENDPOINTS ***/
 if (app.Environment.IsDevelopment() || app.Environment.IsEnvironment("Testing"))

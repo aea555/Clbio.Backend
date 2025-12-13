@@ -58,8 +58,8 @@ namespace Clbio.Application.Services
 
                 // 1. find by email
                 var targetUser = await _userRepo.Query()
-                    .FirstOrDefaultAsync(u => u.Email == dto.Email, ct)
-                    ?? throw new InvalidOperationException($"User with email '{dto.Email}' not found.");
+                    .FirstOrDefaultAsync(u => u.Email == dto.Email && u.EmailVerified, ct)
+                    ?? throw new InvalidOperationException($"User with email '{dto.Email}' not found or is not verified.");
 
                 var workspaceName = await _workspaceRepo.Query()
                     .Where(w => w.Id == workspaceId)

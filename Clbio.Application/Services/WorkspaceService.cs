@@ -19,7 +19,6 @@ namespace Clbio.Application.Services
         ICacheService cache,
         ICacheInvalidationService invalidator,
         ICacheVersionService versions,
-        IBoardService boardService,
         IMapper mapper,
         ILogger<WorkspaceService>? logger = null) : IWorkspaceAppService
     {
@@ -28,8 +27,6 @@ namespace Clbio.Application.Services
         private readonly IRepository<WorkspaceMember> _workspaceMemberRepo = uow.Repository<WorkspaceMember>();
         private readonly IRepository<User> _userRepo = uow.Repository<User>();
         private readonly IRepository<Board> _boardRepo = uow.Repository<Board>();
-
-        private readonly IBoardService _boardService = boardService;
 
         private readonly ICacheService _cache = cache;
         private readonly ICacheInvalidationService _invalidator = invalidator;
@@ -104,15 +101,17 @@ namespace Clbio.Application.Services
                 if (missing.Count > 0)
                 {
                     var missingEntities = await _workspaceRepo.Query()
+                        .Include(w => w.Owner)
                         .Where(w => missing.Contains(w.Id))
                         .ToListAsync(ct);
 
                     // batch SET missing entries into Redis
-                    var setBatch = new Dictionary<string, Workspace>();
+                    var setBatch = new Dictionary<string, ReadWorkspaceDto>();
                     foreach (var w in missingEntities)
                     {
                         var v = await _versions.GetWorkspaceVersionAsync(w.Id);
-                        setBatch[CacheKeys.Workspace(w.Id, v)] = w;
+                        var dto = _mapper.Map<ReadWorkspaceDto>(w); 
+                        setBatch[CacheKeys.Workspace(w.Id, v)] = dto;
                     }
 
                     await _cache.SetManyAsync(setBatch);
@@ -122,7 +121,9 @@ namespace Clbio.Application.Services
                     {
                         if (cachedValues[i] == null)
                         {
-                            cachedValues[i] = missingEntities.FirstOrDefault(w => w.Id == workspaceIds[i]);
+                            var freshData = missingEntities.FirstOrDefault(w => w.Id == workspaceIds[i]);
+                            var freshDto = _mapper.Map<Workspace>(freshData);
+                            cachedValues[i] = freshDto;
                         }
                     }
                 }
@@ -149,15 +150,16 @@ namespace Clbio.Application.Services
 
                 var workspace = _mapper.Map<Workspace>(dto);
                 workspace.Status = WorkspaceStatus.Active;
+                workspace.OwnerId = ownerId;
 
-                await _workspaceRepo.AddAsync(workspace, ct);
+                var createdWorkspace = await _workspaceRepo.AddAsync(workspace, ct);
                 await _uow.SaveChangesAsync(ct);
 
                 // Add owner as member
                 var membership = new WorkspaceMember
                 {
-                    WorkspaceId = workspace.Id,
-                    UserId = workspace.OwnerId,
+                    WorkspaceId = createdWorkspace.Id,
+                    UserId = createdWorkspace.OwnerId,
                     Role = WorkspaceRole.Owner
                 };
 
