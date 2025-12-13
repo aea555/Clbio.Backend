@@ -107,9 +107,11 @@ namespace Clbio.API.Controllers.v1.Auth
             if (string.IsNullOrWhiteSpace(req.RefreshToken))
                 return BadRequest(ApiResponse<object>.Fail("Refresh token is required."));
 
-            var userIdClaim = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userIdClaim is null)
-                return Unauthorized(ApiResponse<object>.Fail("Invalid token."));
+            var userIdClaim = User.FindFirst("sub")?.Value 
+               ?? User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized(ApiResponse<object>.Fail("Invalid token claims."));
 
             var userId = Guid.Parse(userIdClaim);
 
