@@ -1,5 +1,6 @@
 ﻿using Clbio.Abstractions.Interfaces;
 using Clbio.Abstractions.Interfaces.Auth;
+using Clbio.Abstractions.Interfaces.Cache;
 using Clbio.Abstractions.Interfaces.Repositories;
 using Clbio.Application.Interfaces;
 using Clbio.Application.Services.Auth;
@@ -8,6 +9,7 @@ using Clbio.Domain.Entities.V1.Auth;
 using Clbio.Shared.Results;
 using Clbio.Tests.Configs;
 using Clbio.Tests.Helpers;
+using Clbio.Tests.Utils.Fakes;
 using Moq;
 using Shouldly;
 
@@ -28,6 +30,7 @@ public class EmailVerificationServiceTests
         _service = new EmailVerificationService(
             _userRepo.Object,
             _tokenRepo.Object,
+            new FakeCaching(),
             _tokenService.Object,
             _tokenFactory.Object,
             _emailSender,

@@ -1,4 +1,5 @@
-﻿using Clbio.Abstractions.Interfaces;
+﻿using AutoMapper;
+using Clbio.Abstractions.Interfaces;
 using Clbio.Abstractions.Interfaces.Auth;
 using Clbio.Abstractions.Interfaces.Repositories;
 using Clbio.Abstractions.Interfaces.Services;
@@ -10,6 +11,7 @@ using Clbio.Domain.Entities.V1;
 using Clbio.Domain.Entities.V1.Auth;
 using Clbio.Domain.Enums;
 using Clbio.Shared.Results;
+using Clbio.Tests.Utils;
 using Moq;
 using Shouldly;
 using System.Linq.Expressions;
@@ -37,6 +39,7 @@ public class AuthServiceTests
 
         _service = new AuthService(
             _uow.Object,
+            TestMapperFactory.Create(),
             _throttling.Object,
             _emailVerification.Object,
             _passwordReset.Object,
