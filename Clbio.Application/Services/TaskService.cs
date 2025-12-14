@@ -8,6 +8,7 @@ using Clbio.Application.Extensions;
 using Clbio.Application.Interfaces.EntityServices;
 using Clbio.Application.Services.Base;
 using Clbio.Domain.Entities.V1;
+using Clbio.Domain.Enums;
 using Clbio.Shared.Results;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -37,6 +38,8 @@ namespace Clbio.Application.Services
         private readonly IRepository<TaskItem> _taskRepo = uow.Repository<TaskItem>();
         private readonly IRepository<Column> _columnRepo = uow.Repository<Column>();
         private readonly IRepository<Board> _boardRepo = uow.Repository<Board>();
+        private readonly IRepository<WorkspaceMember> _memberRepo = uow.Repository<WorkspaceMember>();
+        private readonly IRepository<User> _userRepo = uow.Repository<User>();
 
         public async Task<Result<List<ReadTaskItemDto>>> GetByBoardAsync(Guid workspaceId, Guid boardId, CancellationToken ct = default)
         {
@@ -287,78 +290,112 @@ namespace Clbio.Application.Services
                 await _socketService.SendToWorkspaceAsync(workspaceId, "TaskDeleted", new { Id = taskId }, ct);
             }, _logger, "TASK_DELETE_FAILED");
         }
-        public async Task<Result> AssignUserAsync(Guid workspaceId, Guid taskId, Guid? assigneeId, Guid actorId, CancellationToken ct = default)
+        public async Task<Result> AssignUserAsync(Guid workspaceId, Guid taskId, Guid? targetUserId, Guid actorId, CancellationToken ct = default)
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
                 var task = await _taskRepo.Query()
-                    .Include(t => t.Column)
-                        .ThenInclude(c => c.Board)
+                    .Include(t => t.Column).ThenInclude(c => c.Board)
                     .FirstOrDefaultAsync(t => t.Id == taskId, ct)
-                     ?? throw new InvalidOperationException("Task not found.");
+                        ?? throw new InvalidOperationException("Task not found.");
 
                 if (task.Column.Board.WorkspaceId != workspaceId)
                     throw new UnauthorizedAccessException("Task is outside the workspace scope.");
 
-                var actor = await Repo<User>().GetByIdAsync(actorId, false, ct)
-                    ?? throw new InvalidOperationException("Actor user not found.");
+                var actorMember = await _memberRepo.Query()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == actorId, ct)
+                    ?? throw new UnauthorizedAccessException("Actor is not a member of this workspace.");
 
-                User? assignee = null;
+                var actorUser = await _userRepo.GetByIdAsync(actorId, false, ct); 
 
-                if (assigneeId.HasValue)
+                // 2. LOGIC CHECKS 
+                
+                if (actorMember.Role == WorkspaceRole.Member)
                 {
-                    // A. does user exist?
-                    assignee = await Repo<User>().GetByIdAsync(assigneeId.Value, false, ct)
-                               ?? throw new InvalidOperationException("Assignee user not found.");
+                    if (targetUserId.HasValue && targetUserId.Value != actorId)
+                    {
+                        throw new UnauthorizedAccessException("As a regular member, you can only assign tasks to yourself.");
+                    }
 
-                    // B. workspace member?
-                    var isMember = await Repo<WorkspaceMember>().Query()
-                        .AnyAsync(m => m.WorkspaceId == workspaceId && m.UserId == assigneeId.Value, ct);
-
-                    if (!isMember)
-                        throw new InvalidOperationException($"User '{assignee.DisplayName}' is not a member of this workspace.");
+                    if (task.AssigneeId.HasValue && task.AssigneeId != actorId)
+                    {
+                        throw new UnauthorizedAccessException("You cannot unassign or reassign a task belonging to someone else.");
+                    }
                 }
 
-                if (task.AssigneeId == assigneeId) return;
+                // 3. TARGET USER VALIDATION 
+                User? targetUser = null;
+                if (targetUserId.HasValue)
+                {
+                    if (targetUserId == actorId)
+                    {
+                        targetUser = actorUser; 
+                    }
+                    else
+                    {
+                        var isTargetMember = await _memberRepo.Query()
+                            .AnyAsync(m => m.WorkspaceId == workspaceId && m.UserId == targetUserId.Value, ct);
 
+                        if (!isTargetMember)
+                            throw new InvalidOperationException("Target user is not a member of this workspace.");
+
+                        targetUser = await _userRepo.GetByIdAsync(targetUserId.Value, false, ct);
+                    }
+                }
+
+                if (task.AssigneeId == targetUserId) return;
+
+                // 4. APPLY & SAVE
                 var oldAssigneeId = task.AssigneeId;
-                task.AssigneeId = assigneeId;
-
+                task.AssigneeId = targetUserId;
+                task.UpdatedAt = DateTime.UtcNow; 
+                
                 await _uow.SaveChangesAsync(ct);
 
-                var action = assigneeId.HasValue ? "Assign" : "Unassign";
-                var detail = assigneeId.HasValue
-                    ? $"Assigned to user."
-                    : "User unassigned.";
+                // 5. LOGGING & NOTIFICATIONS
+                var isUnassign = !targetUserId.HasValue;
+                var action = isUnassign ? "Unassign" : "Assign";
+                
+                string detail;
+                if (isUnassign)
+                    detail = $"{actorUser.DisplayName} unassigned the task.";
+                else if (targetUserId == actorId)
+                    detail = $"{actorUser.DisplayName} took the task.";
+                else
+                    detail = $"{actorUser.DisplayName} assigned to {targetUser!.DisplayName}.";
 
                 await _activityLog.LogAsync(workspaceId, actorId, "Task", taskId, action, detail, ct);
 
                 await _socketService.SendToWorkspaceAsync(workspaceId, "TaskAssigned", new
                 {
                     TaskId = taskId,
-                    AssigneeId = assigneeId,
-                    AssigneeName = assignee?.DisplayName,
-                    AssigneeAvatar = assignee?.AvatarUrl,
-                    AssignedBy = actor.DisplayName
+                    AssigneeId = targetUserId,
+                    AssigneeName = targetUser?.DisplayName,
+                    AssigneeAvatar = targetUser?.AvatarUrl,
+                    AssignedBy = actorUser.DisplayName,
+                    Action = action, 
+                    Detail = detail
                 }, ct);
 
-                if (assigneeId.HasValue && assigneeId != actorId)
+                if (targetUserId.HasValue && targetUserId != actorId)
                 {
                     await _notificationService.SendNotificationAsync(
-                        assigneeId.Value,
-                        "New Task Assignment",
-                        $"{actor.DisplayName} assigned you to task: {task.Title}",
+                        targetUserId.Value,
+                        "Task Assigned",
+                        $"{actorUser.DisplayName} assigned you to task: {task.Title}",
                         ct);
                 }
 
-                if (oldAssigneeId.HasValue && oldAssigneeId != actorId && oldAssigneeId != assigneeId)
+                if (oldAssigneeId.HasValue && oldAssigneeId != actorId && oldAssigneeId != targetUserId)
                 {
                     await _notificationService.SendNotificationAsync(
-                       oldAssigneeId.Value,
-                       "Task Unassigned",
-                       $"{actor.DisplayName} removed you from task: {task.Title}",
-                       ct);
+                        oldAssigneeId.Value,
+                        "Task Unassigned",
+                        $"{actorUser.DisplayName} removed you from task: {task.Title}",
+                        ct);
                 }
+
             }, _logger, "TASK_ASSIGN_FAILED");
         }
     }

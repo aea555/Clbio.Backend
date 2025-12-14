@@ -81,17 +81,18 @@ namespace Clbio.Domain.Extensions
             FilterWorkspaceScoped(
             [
             Permission.ViewWorkspace,
-            Permission.ManageWorkspace,
 
             Permission.ViewBoard,
             Permission.CreateBoard,
             Permission.UpdateBoard,
             Permission.ReorderBoard,
+            Permission.DeleteBoard,
 
             Permission.ViewColumn,
             Permission.CreateColumn,
             Permission.UpdateColumn,
             Permission.ReorderColumn,
+            Permission.DeleteColumn,
 
             Permission.ViewTask,
             Permission.CreateTask,
@@ -122,13 +123,18 @@ namespace Clbio.Domain.Extensions
             FilterWorkspaceScoped(
             [
             Permission.ViewWorkspace,
-
+            Permission.ViewMember,
             Permission.ViewBoard,
             Permission.ViewColumn,
             Permission.ViewTask,
             Permission.UpdateTaskStatus,
             Permission.CommentOnTask,
             Permission.MarkTaskAsComplete,
+
+            Permission.CreateTask, 
+            Permission.AssignTask, 
+            Permission.MoveTask,   
+            Permission.UpdateTask, 
 
             Permission.ViewAttachment,
             Permission.CreateAttachment,
