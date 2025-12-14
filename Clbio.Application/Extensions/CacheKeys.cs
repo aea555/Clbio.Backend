@@ -29,6 +29,9 @@ namespace Clbio.Application.Extensions
         // Membership of user inside a workspace 
         public static string Membership(Guid userId, Guid workspaceId, long version) =>
             $"membership:v{version}:{userId}:{workspaceId}";
+        
+        public static string WorkspaceMembers(Guid workspaceId, long version) =>
+            $"members:ws:v{version}:{workspaceId}";
 
         // Workspace list per user 
         public static string UserWorkspaces(Guid userId)
@@ -37,8 +40,8 @@ namespace Clbio.Application.Extensions
         // ─────────────────────────────────────────────────────
         // ROLE & PERMISSION
         // ─────────────────────────────────────────────────────
-        public static string RolePermissions(WorkspaceRole role, long version) =>
-            $"roleperms:ws:v{version}:{role}";
+        public static string RolePermissions(WorkspaceRole role, long version) 
+            => $"roleperms:ws:v{version}:{role}";
 
         public static string GlobalRolePermissions(GlobalRole role)
             => $"roleperms:global:{role}";
@@ -49,8 +52,11 @@ namespace Clbio.Application.Extensions
         public static string Board(Guid boardId, long version)
             => $"board:v{version}:{boardId}";
 
-        public static string BoardsByWorkspace(Guid workspaceId, long version) =>
-            $"boards:ws:v{version}:{workspaceId}";
+        public static string BoardsByWorkspace(Guid workspaceId, long version) 
+            => $"boards:ws:v{version}:{workspaceId}";
+        
+        public static string BoardMetaWorkspaceId(Guid boardId) 
+            => $"json:meta:board_ws:{boardId}";
 
         // ─────────────────────────────────────────────────────
         // COLUMNS
@@ -66,11 +72,19 @@ namespace Clbio.Application.Extensions
 
         public static string BoardTasks(Guid boardId, long version)
             => $"tasks:board:v{version}:{boardId}";
+        public static string TaskMetaWorkspaceId(Guid taskId) 
+            => $"meta:task_ws:{taskId}";
 
         // ─────────────────────────────────────────────────────
         // NOTIFICATIONS 
         // ─────────────────────────────────────────────────────
         public static string NotificationCount(Guid userId)
             => $"notifcount:{userId}";
+
+        // ─────────────────────────────────────────────────────
+        // COMMENTS
+        // ─────────────────────────────────────────────────────
+        public static string TaskComments(Guid taskId) 
+            => $"comments:task:{taskId}";
     }
 }

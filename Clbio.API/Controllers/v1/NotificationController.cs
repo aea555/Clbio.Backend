@@ -12,6 +12,20 @@ namespace Clbio.API.Controllers.v1
     {
         private readonly INotificationAppService _service = service;
 
+        [HttpGet("unread-count")]
+        [RequirePermission(Permission.ViewNotification)]
+        public async Task<IActionResult> GetUnreadCount(CancellationToken ct)
+        {
+            var userId = User.GetUserId();
+
+            var result = await _service.GetUnreadCountAsync(userId, ct);
+
+            if (!result.Success)
+                return BadRequest(ApiResponse.Fail(result.Error!, result.Code));
+
+            return Ok(ApiResponse.Ok(new { Count = result.Value }));
+        }
+
         [HttpGet]
         [RequirePermission(Permission.ViewNotification)]
         public async Task<IActionResult> GetMy(

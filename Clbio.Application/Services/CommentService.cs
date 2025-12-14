@@ -18,6 +18,7 @@ namespace Clbio.Application.Services
     public class CommentService(
         IUnitOfWork uow,
         IMapper mapper,
+        ICacheService cache,
         ICacheInvalidationService invalidator,
         INotificationAppService notificationService,
         ISocketService socketService,
@@ -25,6 +26,7 @@ namespace Clbio.Application.Services
         : ServiceBase<Comment>(uow, logger), ICommentAppService
     {
         private readonly IMapper _mapper = mapper;
+        private readonly ICacheService _cache = cache;
         private readonly ICacheInvalidationService _invalidator = invalidator;
         private readonly INotificationAppService _notificationService = notificationService;
         private readonly ISocketService _socketService = socketService;
@@ -40,25 +42,35 @@ namespace Clbio.Application.Services
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
-                // 1. Check hierarchy of Task
-                // Task -> Column -> Board -> Workspace chain
-                var task = await _taskRepo.Query()
-                    .Include(t => t.Column)
-                        .ThenInclude(c => c.Board)
-                    .FirstOrDefaultAsync(t => t.Id == taskId, ct) ?? throw new InvalidOperationException("Task not found.");
+                var key = CacheKeys.TaskComments(taskId);
 
-                // security check
-                if (task.Column.Board.WorkspaceId != workspaceId)
-                    throw new UnauthorizedAccessException("Task does not belong to the specified workspace.");
+                var commentsDto = await _cache.GetOrSetAsync(
+                    key,
+                    async () =>
+                    {
+                        var taskMeta = await _taskRepo.Query()
+                            .AsNoTracking()
+                            .Include(t => t.Column).ThenInclude(c => c.Board)
+                            .Where(t => t.Id == taskId)
+                            .Select(t => new { t.Id, WorkspaceId = t.Column.Board.WorkspaceId })
+                            .FirstOrDefaultAsync(ct)
+                            ?? throw new InvalidOperationException("Task not found.");
 
-                // 2. fetch comments
-                var comments = await _commentRepo.Query()
-                    .Where(c => c.TaskId == taskId)
-                    .Include(c => c.Author)
-                    .OrderBy(c => c.CreatedAt)
-                    .ToListAsync(ct);
+                        if (taskMeta.WorkspaceId != workspaceId)
+                            throw new UnauthorizedAccessException("Task does not belong to the specified workspace.");
 
-                return _mapper.Map<List<ReadCommentDto>>(comments);
+                        var entities = await _commentRepo.Query()
+                            .AsNoTracking()
+                            .Where(c => c.TaskId == taskId)
+                            .Include(c => c.Author) 
+                            .OrderBy(c => c.CreatedAt)
+                            .ToListAsync(ct);
+
+                        return _mapper.Map<List<ReadCommentDto>>(entities);
+                    },
+                    TimeSpan.FromMinutes(60));
+
+                return commentsDto ?? [];
 
             }, _logger, "COMMENT_LIST_FAILED");
         }
@@ -87,6 +99,7 @@ namespace Clbio.Application.Services
                 await _commentRepo.AddAsync(comment, ct);
                 await _uow.SaveChangesAsync(ct);
                 await _invalidator.InvalidateWorkspace(workspaceId);
+                await _cache.RemoveAsync(CacheKeys.TaskComments(task.Id));
 
                 var createdCommentWithAuthor = await _commentRepo.Query()
                     .Include(c => c.Author)
@@ -121,6 +134,7 @@ namespace Clbio.Application.Services
                     .Include(c => c.Task)
                         .ThenInclude(t => t.Column)
                             .ThenInclude(col => col.Board)
+                            .Select(c => new { c.Id, c.AuthorId, c.TaskId, Task = c.Task })
                     .FirstOrDefaultAsync(c => c.Id == commentId, ct)
                     ?? throw new InvalidOperationException("Comment not found.");
 
@@ -157,6 +171,7 @@ namespace Clbio.Application.Services
                 if (currentRoleValue > authorRoleValue)
                 {
                     await PerformDelete(workspaceId, commentId, ct);
+                    await _cache.RemoveAsync(CacheKeys.TaskComments(comment.TaskId));
                 }
                 else
                 {

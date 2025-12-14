@@ -27,6 +27,27 @@ namespace Clbio.Application.Services
         private readonly ICacheService _cache = cache;
         private readonly IRepository<Notification> _notifRepo = uow.Repository<Notification>();
 
+        public async Task<Result<int>> GetUnreadCountAsync(Guid userId, CancellationToken ct = default)
+        {
+            return await SafeExecution.ExecuteSafeAsync(async () =>
+            {
+                var key = CacheKeys.NotificationCount(userId);
+
+                var count = await _cache.GetOrSetAsync(
+                    key,
+                    async () =>
+                    {
+                        return await _notifRepo.Query()
+                            .AsNoTracking()
+                            .Where(n => n.UserId == userId && !n.IsRead)
+                            .CountAsync(ct);
+                    },
+                    TimeSpan.FromHours(2));
+
+                return count;
+            }, _logger, "NOTIF_COUNT_FAILED");
+        }
+
         public async Task SendNotificationAsync(Guid userId, string title, string message, CancellationToken ct = default)
         {
             try
@@ -65,6 +86,7 @@ namespace Clbio.Application.Services
             {
                 // 1. prepare query
                 var query = _notifRepo.Query()
+                    .AsNoTracking()
                     .Where(n => n.UserId == userId);
 
                 if (unreadOnly)

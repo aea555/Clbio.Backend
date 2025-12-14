@@ -18,7 +18,9 @@ namespace Clbio.Application.Services
         IUnitOfWork uow,
         INotificationAppService notificationService,
         IMapper mapper,
+        ICacheService cache,
         ICacheInvalidationService invalidator,
+        ICacheVersionService versions,
         ISocketService socketService,
         ILogger<IWorkspaceMemberAppService>? logger = null)
         : IWorkspaceMemberAppService
@@ -27,9 +29,10 @@ namespace Clbio.Application.Services
         private readonly ILogger<IWorkspaceMemberAppService>? _logger = logger;
         private readonly INotificationAppService _notificationService = notificationService;
         private readonly IMapper _mapper = mapper;
+        private readonly ICacheService _cache = cache;
         private readonly ICacheInvalidationService _invalidator = invalidator;
         private readonly ISocketService _socketService = socketService;
-
+        private readonly ICacheVersionService _versions = versions;
         private readonly IRepository<WorkspaceMember> _memberRepo = uow.Repository<WorkspaceMember>();
         private readonly IRepository<User> _userRepo = uow.Repository<User>();
         private readonly IRepository<Workspace> _workspaceRepo = uow.Repository<Workspace>();
@@ -38,12 +41,27 @@ namespace Clbio.Application.Services
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
-                var members = await _memberRepo.Query()
-                    .Where(m => m.WorkspaceId == workspaceId)
-                    .Include(m => m.User)
-                    .ToListAsync(ct);
-                return _mapper.Map<List<ReadWorkspaceMemberDto>>(members);
-            }, _logger, "MEMBER_LIST_FAILED");
+                var version = await _versions.GetWorkspaceVersionAsync(workspaceId);
+                
+                var key = CacheKeys.WorkspaceMembers(workspaceId, version);
+
+                var memberDtos = await _cache.GetOrSetAsync(
+                    key,
+                    async () =>
+                    {
+                        var members = await _memberRepo.Query()
+                            .AsNoTracking()
+                            .Where(m => m.WorkspaceId == workspaceId)
+                            .Include(m => m.User) 
+                            .ToListAsync(ct);
+
+                        return _mapper.Map<List<ReadWorkspaceMemberDto>>(members);
+                    },
+                    TimeSpan.FromMinutes(30));
+
+                return memberDtos ?? [];
+
+                }, _logger, "MEMBER_LIST_FAILED");
         }
 
         // ---------------------------------------------------------------------
@@ -82,8 +100,8 @@ namespace Clbio.Application.Services
 
                 await _memberRepo.AddAsync(member, ct);
                 await _uow.SaveChangesAsync(ct);
-                await _invalidator.InvalidateMembership(targetUser.Id, workspaceId);
                 await _invalidator.InvalidateWorkspace(workspaceId);
+                await _cache.RemoveAsync(CacheKeys.UserWorkspaces(targetUser.Id));
 
                 // 4. Return & Notify
                 var createdMember = await _memberRepo.Query()
@@ -144,6 +162,7 @@ namespace Clbio.Application.Services
                 targetMember.Role = newRole;
                 await _uow.SaveChangesAsync(ct);
                 await _invalidator.InvalidateMembership(targetUserId, workspaceId);
+                await _invalidator.InvalidateWorkspace(workspaceId);
 
                 var readDto = _mapper.Map<ReadWorkspaceMemberDto>(targetMember);
 
@@ -226,7 +245,7 @@ namespace Clbio.Application.Services
                 }
 
                 await PerformRemove(workspaceId, member, ct);
-
+                
             }, _logger, "MEMBER_LEAVE_FAILED");
         }
 
@@ -279,6 +298,7 @@ namespace Clbio.Application.Services
             await _uow.SaveChangesAsync(ct);
             await _invalidator.InvalidateMembership(member.UserId, workspaceId);
             await _invalidator.InvalidateWorkspace(workspaceId);
+            await _cache.RemoveAsync(CacheKeys.UserWorkspaces(member.UserId));
 
             // announce removal
             await _socketService.SendToWorkspaceAsync(workspaceId, "MemberRemoved", new { userId = member.UserId }, ct);

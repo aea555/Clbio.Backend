@@ -43,24 +43,44 @@ namespace Clbio.Application.Services
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
-                var boardMeta = await _boardRepo.Query()
-                    .Where(b => b.Id == boardId)
-                    .Select(b => new { b.WorkspaceId })
-                    .FirstOrDefaultAsync(ct)
-                    ?? throw new InvalidOperationException("Board not found.");
+                var metaKey = CacheKeys.BoardMetaWorkspaceId(boardId);
 
-                var version = await _versions.GetWorkspaceVersionAsync(boardMeta.WorkspaceId);
+                var workspaceId = await _cache.GetOrSetAsync(
+                    metaKey,
+                    async () =>
+                    {
+                        var wsId = await _boardRepo.Query()
+                            .AsNoTracking()
+                            .Where(b => b.Id == boardId)
+                            .Select(b => b.WorkspaceId)
+                            .FirstOrDefaultAsync(ct);
+
+                        if (wsId == Guid.Empty)
+                            throw new InvalidOperationException("Board not found.");
+
+                        return wsId;
+                    },
+                    TimeSpan.FromDays(7));
+
+                // 2. Version & Key
+                var version = await _versions.GetWorkspaceVersionAsync(workspaceId);
                 var key = CacheKeys.ColumnsByBoard(boardId, version);
 
-                var columns = await _cache.GetOrSetAsync(key,
-                    async () => await _columnRepo.Query()
-                        .Where(c => c.BoardId == boardId)
-                        .OrderBy(c => c.Position)
-                        .Include(c => c.Tasks)
-                        .ToListAsync(ct),
+                var columnDtos = await _cache.GetOrSetAsync(
+                    key,
+                    async () =>
+                    {
+                        var entities = await _columnRepo.Query()
+                            .AsNoTracking()
+                            .Where(c => c.BoardId == boardId)
+                            .OrderBy(c => c.Position)
+                            .ToListAsync(ct);
+
+                        return _mapper.Map<List<ReadColumnDto>>(entities);
+                    },
                     TimeSpan.FromMinutes(30));
 
-                return _mapper.Map<List<ReadColumnDto>>(columns);
+                return columnDtos ?? [];
 
             }, _logger, "COLUMN_LIST_FAILED");
         }

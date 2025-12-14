@@ -14,22 +14,33 @@ namespace Clbio.Application.Services
     public class UserService(
         IUnitOfWork uow,
         IMapper mapper,
+        ICacheService cache,
         ICacheInvalidationService invalidator,
         Microsoft.Extensions.Logging.ILogger<UserService>? logger = null)
         : ServiceBase<User>(uow, logger), IUserAppService
     {
         private readonly IMapper _mapper = mapper;
         private readonly ICacheInvalidationService _invalidator = invalidator;
+        private readonly ICacheService _cache = cache;
         private readonly IRepository<User> _userRepo = uow.Repository<User>();
 
         public async Task<Result<ReadUserDto?>> GetAsync(Guid userId, CancellationToken ct = default)
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
-                var user = await _userRepo.GetByIdAsync(userId, false, ct);
-                if (user == null) return null;
+                var key = CacheKeys.User(userId);
+                var userDto = await _cache.GetOrSetAsync(
+                    key,
+                    async () =>
+                    {
+                        var user = await _userRepo.GetByIdAsync(userId, false, ct);                      
+                        if (user == null) return null;
 
-                return _mapper.Map<ReadUserDto>(user);
+                        return _mapper.Map<ReadUserDto>(user);
+                    },
+                TimeSpan.FromHours(1));
+
+                return userDto;
             }, _logger, "USER_GET_FAILED");
         }
 
@@ -39,7 +50,7 @@ namespace Clbio.Application.Services
             {
                 // find user
                 var user = await _userRepo.GetByIdAsync(userId, true, ct)
-                           ?? throw new InvalidOperationException("User not found.");
+                    ?? throw new InvalidOperationException("User not found.");
 
                 _mapper.Map(dto, user);
 
