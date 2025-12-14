@@ -5,6 +5,7 @@ namespace Clbio.Application.Interfaces.EntityServices
 {
     public interface INotificationAppService
     {
+        Task<Result<int>> GetUnreadCountAsync(Guid userId, CancellationToken ct = default);
         Task SendNotificationAsync(Guid userId, string title, string message, CancellationToken ct = default);
         // Get users notifications with pagination
         Task<Result<(List<ReadNotificationDto> Items, int TotalCount)>> GetMyNotificationsPagedAsync(

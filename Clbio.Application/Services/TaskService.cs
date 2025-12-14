@@ -53,11 +53,14 @@ namespace Clbio.Application.Services
                         if (board == null || board.WorkspaceId != workspaceId)
                             return null;
 
-                        return await _taskRepo.Query()
+                        var entities = await _taskRepo.Query()
+                            .AsNoTracking()
                             .Include(t => t.Column)
                             .Where(t => t.Column.BoardId == boardId)
                             .OrderBy(t => t.Position)
                             .ToListAsync(ct);
+
+                        return _mapper.Map<List<ReadTaskItemDto>>(entities);
                     },
                     TimeSpan.FromMinutes(10));
 
@@ -71,24 +74,44 @@ namespace Clbio.Application.Services
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
-                var taskMeta = await _taskRepo.Query()
-                    .Where(t => t.Id == taskId)
-                    .Select(t => new { t.Column.Board.WorkspaceId })
-                    .FirstOrDefaultAsync(ct)
-                    ?? throw new InvalidOperationException("Task not found.");
+                var wsMetaKey = CacheKeys.TaskMetaWorkspaceId(taskId);
 
-                var version = await _versions.GetWorkspaceVersionAsync(taskMeta.WorkspaceId);
+                var workspaceId = await _cache.GetOrSetAsync(
+                    wsMetaKey,
+                    async () =>
+                    {
+                        var wsId = await _taskRepo.Query()
+                            .AsNoTracking()
+                            .Where(t => t.Id == taskId)
+                            .Select(t => t.Column.Board.WorkspaceId) 
+                            .FirstOrDefaultAsync(ct);
 
+                        if (wsId == Guid.Empty) 
+                            throw new InvalidOperationException("Task not found.");
+                        
+                        return wsId;
+                    },
+                    TimeSpan.FromDays(7));
+
+                var version = await _versions.GetWorkspaceVersionAsync(workspaceId);
                 var key = CacheKeys.Task(taskId, version);
 
-                var task = await _cache.GetOrSetAsync(
+                var taskDto = await _cache.GetOrSetAsync(
                     key,
-                    async () => await _taskRepo.Query()
-                        .Include(t => t.Column).ThenInclude(c => c.Board)
-                        .FirstOrDefaultAsync(t => t.Id == taskId, ct),
+                    async () =>
+                    {
+                        var entity = await _taskRepo.Query()
+                            .AsNoTracking()
+                            .Include(t => t.Column)
+                                .ThenInclude(c => c.Board)
+                            .FirstOrDefaultAsync(t => t.Id == taskId, ct)
+                            ?? throw new InvalidOperationException("Task lookup failed.");
+
+                        return _mapper.Map<ReadTaskItemDto>(entity);
+                    },
                     TimeSpan.FromMinutes(10));
 
-                return _mapper.Map<ReadTaskItemDto>(task);
+                return taskDto!;
 
             }, _logger, "TASK_GET_FAILED");
         }
@@ -106,6 +129,7 @@ namespace Clbio.Application.Services
                     throw new UnauthorizedAccessException("Cannot create task outside workspace scope.");
 
                 var task = _mapper.Map<TaskItem>(dto);
+                task.AssigneeId = null;
 
                 var maxPos = await _taskRepo.Query()
                     .Where(t => t.ColumnId == dto.ColumnId)
@@ -258,6 +282,7 @@ namespace Clbio.Application.Services
 
                 await _uow.SaveChangesAsync(ct);
                 await _invalidator.InvalidateWorkspace(workspaceId);
+                await _cache.RemoveAsync(CacheKeys.TaskMetaWorkspaceId(taskId));
 
                 await _socketService.SendToWorkspaceAsync(workspaceId, "TaskDeleted", new { Id = taskId }, ct);
             }, _logger, "TASK_DELETE_FAILED");

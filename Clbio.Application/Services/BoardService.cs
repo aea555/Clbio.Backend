@@ -43,18 +43,22 @@ namespace Clbio.Application.Services
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
                 var version = await _versions.GetWorkspaceVersionAsync(workspaceId);
-
                 var key = CacheKeys.BoardsByWorkspace(workspaceId, version);
 
-                var boards = await _cache.GetOrSetAsync(key,
-                    async () => await _boardRepo.Query()
-                        .Where(b => b.WorkspaceId == workspaceId)
-                        .OrderBy(b => b.Order)
-                        .Include(b => b.Columns)
-                        .ToListAsync(ct),
+                var boardDtos = await _cache.GetOrSetAsync(
+                    key,
+                    async () => {
+                        var entities = await _boardRepo.Query()
+                            .AsNoTracking()
+                            .Where(b => b.WorkspaceId == workspaceId)
+                            .OrderBy(b => b.Order)
+                            .ToListAsync(ct);
+
+                        return _mapper.Map<List<ReadBoardDto>>(entities);
+                    },
                     TimeSpan.FromMinutes(30));
 
-                return boards.Select(_mapper.Map<ReadBoardDto>).ToList();
+                return boardDtos ?? [];
 
             }, _logger, "BOARD_LIST_FAILED");
         }
@@ -66,30 +70,47 @@ namespace Clbio.Application.Services
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
+                var metaKey = CacheKeys.BoardMetaWorkspaceId(boardId);
+
+                var actualWorkspaceId = await _cache.GetOrSetAsync(
+                    metaKey,
+                    async () =>
+                    {
+                        var wsId = await _boardRepo.Query()
+                            .AsNoTracking()
+                            .Where(b => b.Id == boardId)
+                            .Select(b => b.WorkspaceId) 
+                            .FirstOrDefaultAsync(ct);
+
+                        if (wsId == Guid.Empty) 
+                            return Guid.Empty; 
+
+                        return wsId;
+                    },
+                    TimeSpan.FromDays(7)); 
+                
+                if (actualWorkspaceId == Guid.Empty)
+                    return null; 
+
+                if (actualWorkspaceId != workspaceId)
+                    throw new UnauthorizedAccessException("Access to this board is denied under the current workspace.");
+
                 var version = await _versions.GetWorkspaceVersionAsync(workspaceId);
                 var key = CacheKeys.Board(boardId, version);
 
-                var board = await _cache.GetOrSetAsync(key,
+                var boardDto = await _cache.GetOrSetAsync(
+                    key,
                     async () =>
                     {
                         var entity = await _boardRepo.Query()
-                            .Include(b => b.Columns)
+                            .AsNoTracking()
                             .FirstOrDefaultAsync(b => b.Id == boardId, ct);
-                        return entity;
+
+                        return _mapper.Map<ReadBoardDto>(entity);
                     },
+                    TimeSpan.FromMinutes(30));
 
-                TimeSpan.FromMinutes(30));
-
-                if (board == null)
-                    return null;
-
-                if (board.WorkspaceId != workspaceId)
-                {
-                    throw new UnauthorizedAccessException("Access to this board is denied under the current workspace.");
-                }
-
-                return _mapper.Map<ReadBoardDto>(board);
-
+                return boardDto;
             }, _logger, "BOARD_READ_FAILED");
         }
 
@@ -114,6 +135,7 @@ namespace Clbio.Application.Services
 
                 // bump workspace version
                 await _invalidator.InvalidateWorkspace(dto.WorkspaceId);
+                await _cache.RemoveAsync(CacheKeys.BoardMetaWorkspaceId(board.Id));
 
                 var readDto = _mapper.Map<ReadBoardDto>(board);
 
@@ -207,6 +229,7 @@ namespace Clbio.Application.Services
                 await _activityLog.LogAsync(workspaceId, actorId, "Board", boardId, "Delete", "Board deleted.", ct);
 
                 await _invalidator.InvalidateWorkspace(workspaceId);
+                await _cache.RemoveAsync(CacheKeys.BoardMetaWorkspaceId(boardId));
 
                 await _socketService.SendToWorkspaceAsync(workspaceId, "BoardDeleted", new { Id = boardId }, ct);
             }, _logger, "BOARD_DELETE_FAILED");

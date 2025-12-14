@@ -16,7 +16,5 @@ namespace Clbio.Application.DTOs.V1.TaskItem
 
         [Required]
         public Guid ColumnId { get; set; }
-
-        public Guid? AssigneeId { get; set; }
     }
 }

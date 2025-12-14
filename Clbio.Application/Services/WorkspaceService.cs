@@ -43,16 +43,24 @@ namespace Clbio.Application.Services
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
                 var version = await _versions.GetWorkspaceVersionAsync(workspaceId);
+                var key = CacheKeys.Workspace(workspaceId, version);
 
-                var entity = await _cache.GetOrSetAsync(
-                    CacheKeys.Workspace(workspaceId, version),
-                    async () => await _workspaceRepo.GetByIdAsync(workspaceId, false, ct),
+                var dto = await _cache.GetOrSetAsync(
+                    key,
+                    async () =>
+                    {
+                        var entity = await _workspaceRepo.Query()
+                            .AsNoTracking()
+                            .Include(w => w.Owner) 
+                            .FirstOrDefaultAsync(w => w.Id == workspaceId, ct);
+
+                        if (entity is null)
+                            return null;
+
+                        return _mapper.Map<ReadWorkspaceDto>(entity);
+                    },
                     TimeSpan.FromMinutes(10));
 
-                if (entity is null)
-                    return null;
-
-                var dto = _mapper.Map<ReadWorkspaceDto>(entity);
                 return dto;
 
             }, _logger, "WORKSPACE_READ_FAILED");
@@ -66,13 +74,21 @@ namespace Clbio.Application.Services
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
-                var memberships = await _workspaceMemberRepo.Query()
-                    .Where(m => m.UserId == userId)
-                    .ToListAsync(ct);
+                var userWsKey = CacheKeys.UserWorkspaces(userId);
 
-                var workspaceIds = memberships.Select(m => m.WorkspaceId).ToList();
+                var workspaceIds = await _cache.GetOrSetAsync(
+                    userWsKey,
+                    async () =>
+                    {
+                        return await _workspaceMemberRepo.Query()
+                            .AsNoTracking()
+                            .Where(m => m.UserId == userId)
+                            .Select(m => m.WorkspaceId)
+                            .ToListAsync(ct);
+                    },
+                    TimeSpan.FromDays(1)); 
 
-                if (workspaceIds.Count == 0)
+                if (workspaceIds == null || workspaceIds.Count == 0)
                     return Enumerable.Empty<ReadWorkspaceDto>();
 
                 // Load versions in parallel
@@ -87,7 +103,7 @@ namespace Clbio.Application.Services
                     .ToList();
 
                 // batch GET from Redis
-                var cachedValues = await _cache.GetManyAsync<Workspace>(keys);
+                var cachedValues = await _cache.GetManyAsync<ReadWorkspaceDto>(keys);
 
                 // identify missing workspaces
                 var missing = new List<Guid>();
@@ -101,6 +117,7 @@ namespace Clbio.Application.Services
                 if (missing.Count > 0)
                 {
                     var missingEntities = await _workspaceRepo.Query()
+                        .AsNoTracking()
                         .Include(w => w.Owner)
                         .Where(w => missing.Contains(w.Id))
                         .ToListAsync(ct);
@@ -114,27 +131,22 @@ namespace Clbio.Application.Services
                         setBatch[CacheKeys.Workspace(w.Id, v)] = dto;
                     }
 
-                    await _cache.SetManyAsync(setBatch);
+                    if (setBatch.Count > 0)
+                        await _cache.SetManyAsync(setBatch);
 
-                    // replace missing cached values
+                    // update memory list
                     for (int i = 0; i < cachedValues.Count; i++)
                     {
                         if (cachedValues[i] == null)
                         {
-                            var freshData = missingEntities.FirstOrDefault(w => w.Id == workspaceIds[i]);
-                            var freshDto = _mapper.Map<Workspace>(freshData);
-                            cachedValues[i] = freshDto;
+                            var match = missingEntities.FirstOrDefault(w => w.Id == workspaceIds[i]);
+                            if (match != null)
+                                cachedValues[i] = _mapper.Map<ReadWorkspaceDto>(match);
                         }
                     }
                 }
 
-                // convert to DTOs
-                var result = cachedValues
-                    .Where(w => w != null)
-                    .Select(w => _mapper.Map<ReadWorkspaceDto>(w!))
-                    .ToList();
-
-                return result.AsEnumerable();
+                return cachedValues.Where(w => w != null).Select(w => w!).AsEnumerable();
             }, _logger, "WORKSPACE_GET_ALL_FAILED");
         }
 
