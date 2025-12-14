@@ -64,6 +64,7 @@ public static class TestServiceFactory
         var passwordReset = new PasswordResetService(
             tokenService,
             throttling,
+            new FakeCaching(),
             userRepo,
             passwordResetRepo,
             refreshRepo,

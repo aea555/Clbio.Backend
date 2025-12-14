@@ -74,15 +74,41 @@ namespace Clbio.Application.Services
                 var actor = await _userRepo.GetByIdAsync(actorId, false, ct)
                             ?? throw new InvalidOperationException($"Actor not found");
 
+                var actorMember = await _memberRepo.Query()
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == actorId, ct);
+
+                if (actor.GlobalRole != GlobalRole.Admin && actorMember == null)
+                    throw new UnauthorizedAccessException("Actor is not a member of this workspace.");
+
                 // 1. find by email
                 var targetUser = await _userRepo.Query()
                     .FirstOrDefaultAsync(u => u.Email == dto.Email && u.EmailVerified, ct)
                     ?? throw new InvalidOperationException($"User with email '{dto.Email}' not found or is not verified.");
 
+                if (actorId == targetUser.Id)
+                {
+                    throw new InvalidOperationException("You cannot add yourself as a member.");
+                }
+                
                 var workspaceName = await _workspaceRepo.Query()
                     .Where(w => w.Id == workspaceId)
                     .Select(w => w.Name)
                     .FirstOrDefaultAsync(ct);
+
+                if (dto.Role == WorkspaceRole.Owner)
+                    throw new InvalidOperationException("You cannot add a new member directly as Owner. Use ownership transfer.");
+
+                if (actor.GlobalRole != GlobalRole.Admin)
+                {
+                    if (actorMember!.Role != WorkspaceRole.Owner)
+                    {
+                        if (dto.Role >= actorMember.Role)
+                        {
+                            throw new UnauthorizedAccessException("You cannot assign a role equal to or higher than your own.");
+                        }
+                    }
+                }
 
                 // 2. already a member?
                 var exists = await _memberRepo.Query()
