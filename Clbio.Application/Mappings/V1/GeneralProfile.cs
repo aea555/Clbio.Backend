@@ -13,18 +13,6 @@ namespace Clbio.Application.Mappings
             CreateMap<User, ReadUserDto>();
 
             CreateMap<RegisterRequestDto, User>();
-            
-            CreateMap<Workspace, ReadWorkspaceDto>()
-                .ForMember(dest => dest.OwnerDisplayName, opt => opt.MapFrom(src => src.Owner.DisplayName)) 
-                .ForMember(dest => dest.MemberCount, opt => opt.MapFrom(src => src.Members.Count));
-
-            CreateMap<CreateWorkspaceDto, Workspace>()
-                .ForMember(dest => dest.Status, opt => opt.Ignore()) 
-                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
-                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore());
-
-            CreateMap<UpdateWorkspaceDto, Workspace>()
-                .ForAllMembers(opts => opts.Condition((src, dest, srcMember) => srcMember != null)); 
         }
     }
 }

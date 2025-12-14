@@ -1,5 +1,6 @@
 ﻿using Clbio.Abstractions.Interfaces;
 using Clbio.Abstractions.Interfaces.Auth;
+using Clbio.Abstractions.Interfaces.Cache;
 using Clbio.Abstractions.Interfaces.Repositories;
 using Clbio.Abstractions.Interfaces.Services;
 using Clbio.Application.DTOs.V1.Auth;
@@ -15,6 +16,7 @@ namespace Clbio.Application.Services.Auth;
 public sealed class EmailVerificationService(
     IRepository<User> userRepo,
     IRepository<EmailVerificationToken> verificationRepo,
+    ICacheService cache,
     ITokenService tokenService,
     ITokenFactoryService tokenFactory,
     IEmailSender emailSender,
@@ -24,6 +26,7 @@ public sealed class EmailVerificationService(
 {
     private readonly IRepository<User> _userRepo = userRepo;
     private readonly IRepository<EmailVerificationToken> _verificationRepo = verificationRepo;
+    private readonly ICacheService _cache = cache;
     private readonly ITokenService _tokenService = tokenService;
     private readonly ITokenFactoryService _tokenFactory = tokenFactory;
     private readonly IEmailSender _emailSender = emailSender;
@@ -31,8 +34,56 @@ public sealed class EmailVerificationService(
     private readonly IConfiguration _config = config;
     private readonly ILogger<EmailVerificationService>? _logger = logger;
 
+
     // --------------------------------------------------------------------
-    // Send verification email
+    // Send verification email (OTP)
+    // --------------------------------------------------------------------
+    public async Task<Result> SendVerificationOtpEmailAsync(Guid userId, string displayName, string email, CancellationToken ct = default)
+    {
+        try
+        {
+            var cooldownKey = $"otp:cooldown:{userId}";
+            var inCooldown = await _cache.GetAsync<string>(cooldownKey);
+
+            if (!string.IsNullOrEmpty(inCooldown))
+            {
+                return Result.Fail("Please wait a few minutes before requesting a new code.");
+            }
+            
+            // Generate OTP
+            var otp = Random.Shared.Next(100000, 999999).ToString();
+
+            var key = $"otp:verify:{userId}";
+            await _cache.SetAsync(key, otp, TimeSpan.FromMinutes(3));
+
+            // Email
+            var subject = "Clbio - Email Verification Code";
+            var body = 
+                $@"
+                    <div style='font-family: Arial, sans-serif; padding: 20px;'>
+                        <h2>Hello {displayName},</h2>
+                        <p>Your verification code is:</p>
+                        <h1 style='color: #4A90E2; letter-spacing: 5px;'>{otp}</h1>
+                        <p>This code will expire in 3 minutes.</p>
+                        <p>If you didn't request this, please ignore this email.</p>
+                    </div>
+                ";
+            
+            await _emailSender.SendEmailAsync(email, subject, body, ct);
+
+            await _cache.SetAsync(cooldownKey, "1", TimeSpan.FromMinutes(3));
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "SendVerificationOtpEmailAsync failed for user {UserId}", userId);
+            return Result.Fail("Unable to send verification email.");
+        }
+    }
+
+    // --------------------------------------------------------------------
+    // Send verification email (token) (deprecated)
     // --------------------------------------------------------------------
     public async Task<Result> SendVerificationEmailAsync(Guid userId, CancellationToken ct = default)
     {
@@ -91,6 +142,41 @@ public sealed class EmailVerificationService(
     }
 
     // --------------------------------------------------------------------
+    // Verify OTP and mark email as verified
+    // --------------------------------------------------------------------
+    public async Task<Result> VerifyEmailOtpAsync(Guid userId, string otp, string? userAgent,
+        string? ipAddress, CancellationToken ct = default)
+    {
+        try
+        {
+            var key = $"otp:verify:{userId}";
+            var storedOtp = await _cache.GetAsync<string>(key);
+
+            if (storedOtp is null)
+                return Result.Fail("Verification code expired or not found.");
+
+            if (string.Equals(storedOtp, otp) is false)
+                return Result.Fail("Invalid verification code.");
+
+            var user = await _userRepo.GetByIdAsync(userId, true, ct);
+            if (user is null)
+                return Result.Fail("User not found.");
+
+            user.EmailVerified = true;
+
+            await _uow.SaveChangesAsync(ct);
+            await _cache.RemoveAsync(key);
+
+            return Result.Ok();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "VerifyEmailOtpAsync failed for user {UserId}", userId);
+            return Result.Fail("Email verification failed.");
+        }
+    }
+
+    // --------------------------------------------------------------------
     // Verify email token and issue tokens to user
     // --------------------------------------------------------------------
     public async Task<Result<TokenResponseDto>> VerifyEmailAsync(string rawToken,
@@ -144,6 +230,44 @@ public sealed class EmailVerificationService(
         {
             _logger?.LogError(ex, "VerifyEmailAsync failed.");
             return Result<TokenResponseDto>.Fail("Email verification failed.");
+        }
+    }
+
+    // --------------------------------------------------------------------
+    // Resend verification OTP email
+    // --------------------------------------------------------------------
+    public async Task<Result> ResendVerificationOtpEmailAsync(Guid userId, CancellationToken ct = default)
+    {
+        try
+        {
+            var user = await _userRepo.GetByIdAsync(userId, false, ct);
+            if (user is null)
+                return Result.Fail("User not found.");
+
+            if (user.EmailVerified)
+                return Result.Ok(); // Already verified
+
+            var cooldownKey = $"otp:cooldown:{userId}";
+            var inCooldown = await _cache.GetAsync<string>(cooldownKey);
+
+            if (!string.IsNullOrEmpty(inCooldown))
+            {
+                return Result.Fail("Please wait a few minutes before requesting a new code.");
+            }
+
+            var sendResult = await SendVerificationOtpEmailAsync(user.Id, user.DisplayName, user.Email, ct);
+
+            if (sendResult.Success)
+            {
+                await _cache.SetAsync(cooldownKey, "1", TimeSpan.FromMinutes(3));
+            }
+
+            return sendResult;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "ResendVerificationOtpEmailAsync failed for user {UserId}", userId);
+            return Result.Fail("Unable to resend verification email.");
         }
     }
 }

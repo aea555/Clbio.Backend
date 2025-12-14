@@ -1,9 +1,11 @@
-﻿using Clbio.Abstractions.Interfaces;
+﻿using AutoMapper;
+using Clbio.Abstractions.Interfaces;
 using Clbio.Abstractions.Interfaces.Auth;
 using Clbio.Abstractions.Interfaces.Repositories;
 using Clbio.Abstractions.Interfaces.Services;
 using Clbio.Application.DTOs.V1.Auth;
 using Clbio.Application.DTOs.V1.Auth.External;
+using Clbio.Application.DTOs.V1.User;
 using Clbio.Application.Extensions;
 using Clbio.Application.Interfaces;
 using Clbio.Domain.Entities.V1;
@@ -16,6 +18,7 @@ namespace Clbio.Application.Services.Auth
 {
     public sealed class AuthService : IAuthService
     {
+        private readonly IMapper _mapper;
         private readonly IRepository<User> _userRepo;
         private readonly IAuthThrottlingService _throttling;
         private readonly IEmailVerificationService _emailVerification;
@@ -28,6 +31,7 @@ namespace Clbio.Application.Services.Auth
 
         public AuthService(
             IUnitOfWork uow,
+            IMapper mapper,
             IAuthThrottlingService throttling,
             IEmailVerificationService emailVerification,
             IPasswordResetService passwordReset,
@@ -37,6 +41,7 @@ namespace Clbio.Application.Services.Auth
             ILogger<AuthService>? logger = null)
         {
             _uow = uow;
+            _mapper = mapper;
             _throttling = throttling;
             _emailVerification = emailVerification;
             _passwordReset = passwordReset;
@@ -50,7 +55,7 @@ namespace Clbio.Application.Services.Auth
         // --------------------------------------------------------------
         // REGISTER
         // --------------------------------------------------------------
-        public async Task<Result> RegisterAsync(
+        public async Task<Result<ReadUserDto>> RegisterAsync(
             RegisterRequestDto dto,
             string? userAgent,
             string? ipAddress,
@@ -67,18 +72,21 @@ namespace Clbio.Application.Services.Auth
                     // e belongs to a Google-only user
                     if (existing.AuthProvider == AuthProvider.Google && string.IsNullOrWhiteSpace(existing.PasswordHash))
                     {
-                        return Result<TokenResponseDto>.Fail(
+                        return Result<ReadUserDto>.Fail(
                             "This email is associated with a Google account. Use 'Continue with Google' to sign in.");
                     }
 
-                    // email belongs to a normal local user
-                    return Result<TokenResponseDto>.Fail("Email is already in use.");
+                    // if user exists and email is verified, fail
+                    if (existing.EmailVerified)
+                        return Result<ReadUserDto>.Fail("Email is already in use.");
+
+                    return Result<ReadUserDto>.Fail("Please verify your account first.");
                 }
 
                 // Hash password
                 var hash = PasswordManager.HashPassword(dto.Password);
                 if (!hash.Success)
-                    return Result<TokenResponseDto>.Fail(hash.Error ?? "Password hashing failed.");
+                    return Result<ReadUserDto>.Fail(hash.Error ?? "Password hashing failed.");
 
                 // Create local user
                 var user = new User
@@ -95,14 +103,16 @@ namespace Clbio.Application.Services.Auth
                 await _userRepo.AddAsync(user, ct);
                 await _uow.SaveChangesAsync(ct);
 
+                var userDto = _mapper.Map<User, ReadUserDto>(user);
+
                 // Send verification email
-                await _emailVerification.SendVerificationEmailAsync(user.Id, ct);
-                return Result.Ok();
+                await _emailVerification.SendVerificationOtpEmailAsync(user.Id, user.DisplayName, user.Email, ct);
+                return Result<ReadUserDto>.Ok(userDto);
             }
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "RegisterAsync failed");
-                return Result<TokenResponseDto>.Fail("Registration failed.");
+                return Result<ReadUserDto>.Fail("Registration failed.");
             }
         }
 
@@ -298,7 +308,20 @@ namespace Clbio.Application.Services.Auth
         }
 
         // --------------------------------------------------------------
-        // EMAIL VERIFICATION
+        // EMAIL VERIFICATION (OTP)
+        // --------------------------------------------------------------
+        public async Task<Result> VerifyEmailOtpAsync(
+            Guid userId,
+            string otp,
+            string? userAgent,
+            string? ipAddress,
+            CancellationToken ct = default)
+        {
+            return await _emailVerification.VerifyEmailOtpAsync(userId, otp, userAgent, ipAddress, ct);
+        }
+
+        // --------------------------------------------------------------
+        // EMAIL VERIFICATION (token)
         // --------------------------------------------------------------
         public async Task<Result> VerifyEmailAsync(string rawToken, string? userAgent,
             string? ipAddress, CancellationToken ct = default)

@@ -1,4 +1,5 @@
-﻿using Clbio.Abstractions.Interfaces.Services;
+﻿using Clbio.Abstractions.Interfaces.Cache;
+using Clbio.Abstractions.Interfaces.Services;
 using Clbio.Application.Interfaces;
 using Clbio.Infrastructure.Data;
 using Clbio.Tests.Helpers;
@@ -63,6 +64,7 @@ namespace Clbio.Tests.Utils
                 services.RemoveAll<AppDbContext>();
                 services.RemoveAll<IDbContextOptionsConfiguration<AppDbContext>>();
 
+                services.RemoveAll<ICacheService>();
                 services.RemoveAll<IConnectionMultiplexer>();
                 services.RemoveAll<IDistributedCache>();
 
@@ -70,7 +72,7 @@ namespace Clbio.Tests.Utils
 
                 services.RemoveAll<IHostedService>();
                 services.AddSingleton<IHostedService, FakeHostedService>();
-
+                services.AddSingleton<ICacheService, FakeCaching>();
                 services.AddSingleton<IEmailSender, FakeEmailSender>();
 
                 services.AddDbContext<AppDbContext>((sp, options) =>

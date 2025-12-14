@@ -6,6 +6,7 @@ using Clbio.Infrastructure.Auth;
 using Clbio.Infrastructure.Data;
 using Clbio.Tests.Configs;
 using Clbio.Tests.Helpers;
+using Clbio.Tests.Utils.Fakes;
 
 namespace Clbio.Tests.Utils;
 
@@ -17,6 +18,8 @@ public static class TestServiceFactory
         var config = AuthTestConfig.Build();
 
         var emailSender = new FakeEmailSender();
+        var cache = new FakeCaching();
+        var mapper = TestMapperFactory.Create();
 
         // Infrastructure repositories
         var userRepo = uow.Repository<User>();
@@ -40,6 +43,7 @@ public static class TestServiceFactory
         var emailVerification = new EmailVerificationService(
             userRepo,
             emailVerificationRepo,
+            cache,
             tokenService,
             tokenFactoryService,
             emailSender,
@@ -71,6 +75,7 @@ public static class TestServiceFactory
 
         return new AuthService(
             uow,
+            mapper,
             throttling,
             emailVerification,
             passwordReset,

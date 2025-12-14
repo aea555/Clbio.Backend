@@ -1,17 +1,17 @@
 ﻿using Clbio.Application.DTOs.V1.Auth;
 using Clbio.Application.DTOs.V1.Auth.External;
+using Clbio.Application.DTOs.V1.User;
 using Clbio.Shared.Results;
 
 namespace Clbio.Application.Interfaces
 {
     public interface IAuthService
     {
-        Task<Result> RegisterAsync(
+        Task<Result<ReadUserDto>> RegisterAsync(
             RegisterRequestDto dto,
             string? userAgent,
             string? ipAddress,
-            CancellationToken ct = default
-        );
+            CancellationToken ct = default);
 
         Task<Result<TokenResponseDto>> LoginAsync(
             LoginRequestDto dto,
