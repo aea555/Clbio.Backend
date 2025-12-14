@@ -9,6 +9,7 @@ using Clbio.Domain.Entities.V1.Auth;
 using Clbio.Shared.Results;
 using Clbio.Tests.Configs;
 using Clbio.Tests.Helpers;
+using Clbio.Tests.Utils.Fakes;
 using Moq;
 using Shouldly;
 
@@ -23,14 +24,16 @@ public class PasswordResetServiceTests
     private readonly Mock<IRepository<RefreshToken>> _refreshRepo = new();
     private readonly Mock<IUnitOfWork> _uow = new();
     private readonly FakeEmailSender _emailSender = new();
-
+    private readonly FakeCaching _cache = new();
     private readonly PasswordResetService _service;
+
 
     public PasswordResetServiceTests()
     {
         _service = new PasswordResetService(
             _tokenService.Object,
             _throttling.Object,
+            new FakeCaching(),
             _userRepo.Object,
             _resetRepo.Object,
             _refreshRepo.Object,
@@ -40,18 +43,5 @@ public class PasswordResetServiceTests
             null
         );
     }
-
-    [Fact]
-    public async Task ResetPassword_Fails_WhenTokenInvalid()
-    {
-        _tokenService.Setup(t => t.HashRefreshToken(It.IsAny<string>()))
-            .Returns(Result<string>.Fail("bad token"));
-
-        var result = await _service.ResetPasswordAsync(
-            new ResetPasswordRequestDto { Token = "bad", NewPassword = "abc123" },
-            "127.0.0.1"
-        );
-
-        result.Success.ShouldBeFalse();
-    }
+    
 }

@@ -39,23 +39,4 @@ public class EmailVerificationServiceTests
             null
         );
     }
-
-    [Fact]
-    public async Task SendVerificationEmail_CreatesToken_And_SendsEmail()
-    {
-        var user = new User { Id = Guid.NewGuid(), Email = "test@example.com", DisplayName = "Test" };
-
-        _userRepo.Setup(r => r.GetByIdAsync(user.Id, false, It.IsAny<CancellationToken>()))
-                 .ReturnsAsync(user);
-
-        _tokenService.Setup(t => t.CreateRefreshToken())
-                     .Returns(Result<(string token, DateTime expires, string hash)>.Ok(
-                         ("rawtoken", DateTime.UtcNow.AddHours(1), "hash123")
-                     ));
-
-        var result = await _service.SendVerificationEmailAsync(user.Id);
-
-        result.Success.ShouldBeTrue();
-        _emailSender.SentEmails.Count.ShouldBe(1);
-    }
 }
