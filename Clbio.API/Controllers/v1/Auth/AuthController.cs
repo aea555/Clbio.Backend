@@ -32,7 +32,7 @@ namespace Clbio.API.Controllers.v1.Auth
             if (!result.Success)
                 return BadRequest(ApiResponse<TokenResponseDto>.Fail(result.Error!, result.Code));
 
-            return Ok(ApiResponse<object>.Ok("Registration successful. Please check your email to verify your account."));
+            return Ok(ApiResponse<object>.Ok("You've registered successfully. Please verify your email to continue."));
         }
 
         // ------------------------------------------------------------
@@ -144,19 +144,33 @@ namespace Clbio.API.Controllers.v1.Auth
         }
 
         // ------------------------------------------------------------
-        // GET /api/auth/verify-email?token=token123
-        // Verify email by hashing the token from the URL, find the stored record with that hash, check if it not expired or used
+        // POST /api/auth/verify-email
         // ------------------------------------------------------------
-        [HttpGet("verify-email")]
+        [HttpPost("verify-email")]
         [AllowAnonymous]
-        public async Task<IActionResult> VerifyEmail([FromQuery] string token, CancellationToken ct)
+        public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailOtpRequestDto dto, CancellationToken ct)
         {
-            var result = await _emailVerificationService.VerifyEmailAsync(token, GetUserAgent(), GetIp(), ct);
+            var result = await _emailVerificationService.VerifyEmailOtpAsync(dto.UserId, dto.Otp, GetUserAgent(), GetIp(), ct);
 
-            if (!result.Success || result.Value is null)
+            if (!result.Success)
                 return BadRequest(ApiResponse<object>.Fail(result.Error!, result.Code));
 
-            return Ok(ApiResponse<TokenResponseDto>.Ok(result.Value));
+            return Ok(ApiResponse<object>.Ok("Email verified successfully. You can log into your account now."));
+        }
+
+        // ------------------------------------------------------------
+        // POST /api/auth/resend-verification-otp?userId=...
+        // ------------------------------------------------------------
+        [HttpPost("resend-verification-otp")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResendVerificationOtp([FromQuery] Guid userId, CancellationToken ct)
+        {
+            var result = await _emailVerificationService.ResendVerificationOtpEmailAsync(userId, ct);
+
+            if (!result.Success)
+                return BadRequest(ApiResponse<object>.Fail(result.Error!, result.Code));
+
+            return Ok(ApiResponse<object>.Ok("Verification code resent successfully."));
         }
 
         // !!! DEV ENDPOINT
