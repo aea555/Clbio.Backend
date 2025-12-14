@@ -19,30 +19,22 @@ namespace Clbio.Infrastructure.Services
 
         public async Task<List<Guid>> GetOnlineUsersAsync(IEnumerable<Guid> userIds)
         {
-            var onlineUsers = new List<Guid>();
-
-            // batch querying with Redis Pipelining
-            var batch = _db.CreateBatch();
-            var tasks = new List<Task<bool>>();
-
-            // distinct Ids
             var distinctIds = userIds.Distinct().ToList();
+            
+            if (distinctIds.Count == 0) 
+                return [];
 
-            foreach (var id in distinctIds)
-            {
-                // add tasks to batch
-                tasks.Add(batch.KeyExistsAsync(GetKey(id)));
-            }
+            var keys = distinctIds
+                .Select(id => (RedisKey)GetKey(id))
+                .ToArray();
 
-            // send all
-            batch.Execute();
+            var values = await _db.StringGetAsync(keys);
 
-            // gather results
-            var results = await Task.WhenAll(tasks);
+            var onlineUsers = new List<Guid>();
 
             for (int i = 0; i < distinctIds.Count; i++)
             {
-                if (results[i])
+                if (!values[i].IsNullOrEmpty)
                 {
                     onlineUsers.Add(distinctIds[i]);
                 }
