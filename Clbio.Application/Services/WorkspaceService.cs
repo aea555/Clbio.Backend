@@ -17,6 +17,7 @@ namespace Clbio.Application.Services
     public sealed class WorkspaceService(
         IUnitOfWork uow,
         ICacheService cache,
+        ISocketService socketService,
         ICacheInvalidationService invalidator,
         ICacheVersionService versions,
         IMapper mapper,
@@ -29,6 +30,7 @@ namespace Clbio.Application.Services
         private readonly IRepository<Board> _boardRepo = uow.Repository<Board>();
 
         private readonly ICacheService _cache = cache;
+        private readonly ISocketService _socketService = socketService;
         private readonly ICacheInvalidationService _invalidator = invalidator;
         private readonly ICacheVersionService _versions = versions;
 
@@ -203,6 +205,8 @@ namespace Clbio.Application.Services
 
                 await _invalidator.InvalidateWorkspace(workspaceId);
 
+                var readDto = _mapper.Map<ReadWorkspaceDto>(entity);
+                await _socketService.SendToWorkspaceAsync(workspaceId, "WorkspaceUpdated", readDto, ct);
             }, _logger, "WORKSPACE_UPDATE_FAILED");
         }
 
@@ -221,7 +225,7 @@ namespace Clbio.Application.Services
                 await _uow.SaveChangesAsync(ct);
 
                 await _invalidator.InvalidateWorkspace(workspaceId);
-
+                await _socketService.SendToWorkspaceAsync(workspaceId, "WorkspaceArchived", new { Id = workspaceId }, ct);
             }, _logger, "WORKSPACE_ARCHIVE_FAILED");
         }
 
@@ -287,7 +291,7 @@ namespace Clbio.Application.Services
                 await _uow.SaveChangesAsync(ct);
 
                 await _invalidator.InvalidateWorkspace(workspaceId);
-
+                await _socketService.SendToWorkspaceAsync(workspaceId, "WorkspaceDeleted", new { Id = workspaceId }, ct);
             }, _logger, "WORKSPACE_DELETE_FAILED");
         }
     }
