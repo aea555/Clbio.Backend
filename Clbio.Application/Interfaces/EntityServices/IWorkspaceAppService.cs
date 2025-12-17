@@ -10,6 +10,7 @@ namespace Clbio.Application.Interfaces.EntityServices
         Task<Result<ReadWorkspaceDto>> CreateAsync(Guid ownerId, CreateWorkspaceDto dto, CancellationToken ct = default);
         Task<Result> UpdateAsync(Guid workspaceId, UpdateWorkspaceDto dto, CancellationToken ct = default);
         Task<Result> ArchiveAsync(Guid workspaceId, CancellationToken ct = default);
+        Task<Result> UnarchiveAsync(Guid workspaceId, CancellationToken ct = default);
         Task<Result> DeleteAsync(Guid workspaceId, CancellationToken ct = default);
     }
 }

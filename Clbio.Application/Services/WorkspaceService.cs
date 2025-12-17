@@ -196,6 +196,9 @@ namespace Clbio.Application.Services
                 var entity = await _workspaceRepo.GetByIdAsync(workspaceId, true, ct)
                               ?? throw new InvalidOperationException("Workspace not found");
 
+                if (entity.Status == WorkspaceStatus.Archived)
+                    throw new InvalidOperationException("Cannot update an archived workspace.");
+
                 _mapper.Map(dto, entity);
 
                 await _uow.SaveChangesAsync(ct);
@@ -215,17 +218,46 @@ namespace Clbio.Application.Services
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
                 var entity = await _workspaceRepo.GetByIdAsync(workspaceId, true, ct)
-                              ?? throw new InvalidOperationException("Workspace not found");
+                    ?? throw new InvalidOperationException("Workspace not found");
+
+                if (entity.Status == WorkspaceStatus.Archived)
+                    return;
 
                 entity.Status = WorkspaceStatus.Archived;
 
                 await _uow.SaveChangesAsync(ct);
 
                 await _invalidator.InvalidateWorkspace(workspaceId);
+                await _cache.RemoveAsync(CacheKeys.UserWorkspaces(entity.OwnerId));
+
                 await _socketService.SendToWorkspaceAsync(workspaceId, "WorkspaceArchived", new { Id = workspaceId }, ct);
             }, _logger, "WORKSPACE_ARCHIVE_FAILED");
         }
+        
+        public async Task<Result> UnarchiveAsync(Guid workspaceId, CancellationToken ct = default)
+        {
+            return await SafeExecution.ExecuteSafeAsync(async () =>
+            {
+                var entity = await _workspaceRepo.GetByIdAsync(workspaceId, true, ct)
+                    ?? throw new InvalidOperationException("Workspace not found");
 
+                if (entity.Status == WorkspaceStatus.Active)
+                    return;
+
+                if (entity.Status != WorkspaceStatus.Archived)
+                    throw new InvalidOperationException("Only archived workspaces can be restored.");
+
+                entity.Status = WorkspaceStatus.Active;
+
+                await _uow.SaveChangesAsync(ct);
+
+                await _invalidator.InvalidateWorkspace(workspaceId);
+                await _cache.RemoveAsync(CacheKeys.UserWorkspaces(entity.OwnerId));
+                
+                await _socketService.SendToWorkspaceAsync(workspaceId, "WorkspaceUnarchived", new { Id = workspaceId }, ct);
+                
+            }, _logger, "WORKSPACE_UNARCHIVE_FAILED");
+        }
         // ======================================================================
         // DELETE WORKSPACE
         // ======================================================================

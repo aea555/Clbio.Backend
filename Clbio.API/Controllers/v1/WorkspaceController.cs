@@ -98,6 +98,18 @@ namespace Clbio.API.Controllers.v1
             return Ok(ApiResponse.Ok("Workspace archived."));
         }
 
+        [HttpPost("{workspaceId:guid}/unarchive")]
+        [RequirePermission(Permission.ArchiveWorkspace, "workspaceId")]
+        public async Task<IActionResult> Unarchive(Guid workspaceId, CancellationToken ct)
+        {
+            var result = await _service.UnarchiveAsync(workspaceId, ct);
+
+            if (!result.Success)
+                return BadRequest(ApiResponse.Fail(result.Error, result.Code));
+
+            return Ok(ApiResponse.Ok("Workspace unarchived."));
+        }
+
         // ───────────────────────────────────────────────────────────────
         // DELETE /api/workspaces/{workspaceId}
         // Requires: DeleteWorkspace
