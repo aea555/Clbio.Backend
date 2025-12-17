@@ -166,20 +166,17 @@ namespace Clbio.Application.Services
                 workspace.Status = WorkspaceStatus.Active;
                 workspace.OwnerId = ownerId;
 
-                var createdWorkspace = await _workspaceRepo.AddAsync(workspace, ct);
-                await _uow.SaveChangesAsync(ct);
-
-                // Add owner as member
-                var membership = new WorkspaceMember
+                workspace.Members = new List<WorkspaceMember>
                 {
-                    WorkspaceId = createdWorkspace.Id,
-                    UserId = createdWorkspace.OwnerId,
-                    Role = WorkspaceRole.Owner
+                    new() {
+                        UserId = ownerId,
+                        Role = WorkspaceRole.Owner
+                    }
                 };
-
-                await _workspaceMemberRepo.AddAsync(membership, ct);
+                await _workspaceRepo.AddAsync(workspace, ct);                
                 await _uow.SaveChangesAsync(ct);
-
+                await _cache.RemoveAsync(CacheKeys.UserWorkspaces(ownerId));
+                
                 // Map to DTO
                 var readDto = _mapper.Map<ReadWorkspaceDto>(workspace);
                 readDto.OwnerDisplayName = owner.DisplayName;

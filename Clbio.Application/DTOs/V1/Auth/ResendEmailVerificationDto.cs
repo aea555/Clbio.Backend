@@ -1,17 +1,13 @@
-
 using System.ComponentModel.DataAnnotations;
 using Clbio.Application.DTOs.V1.Base;
 
 namespace Clbio.Application.DTOs.V1.Auth
 {
-    public class VerifyEmailOtpRequestDto : RequestDtoBase
+    public class ResendEmailVerificationDto : RequestDtoBase
     {
         [Required]
         [EmailAddress]
         [MaxLength(320)]
         public string Email { get; set; } = null!;
-        [Required]
-        [MaxLength(6)]
-        public string Code { get; set; } = null!;
     }
 }

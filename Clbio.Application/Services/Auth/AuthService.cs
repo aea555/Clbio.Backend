@@ -106,7 +106,7 @@ namespace Clbio.Application.Services.Auth
                 var userDto = _mapper.Map<User, ReadUserDto>(user);
 
                 // Send verification email
-                await _emailVerification.SendVerificationOtpEmailAsync(user.Id, user.DisplayName, user.Email, ct);
+                await _emailVerification.SendVerificationOtpEmailAsync(user.Email, user.DisplayName, ct);
                 return Result<ReadUserDto>.Ok(userDto);
             }
             catch (Exception ex)
@@ -311,13 +311,13 @@ namespace Clbio.Application.Services.Auth
         // EMAIL VERIFICATION (OTP)
         // --------------------------------------------------------------
         public async Task<Result> VerifyEmailOtpAsync(
-            Guid userId,
-            string otp,
+            string email,
+            string code,
             string? userAgent,
             string? ipAddress,
             CancellationToken ct = default)
         {
-            return await _emailVerification.VerifyEmailOtpAsync(userId, otp, userAgent, ipAddress, ct);
+            return await _emailVerification.VerifyEmailOtpAsync(email, code, userAgent, ipAddress, ct);
         }
 
         // --------------------------------------------------------------
