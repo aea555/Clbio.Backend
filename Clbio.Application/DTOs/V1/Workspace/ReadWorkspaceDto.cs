@@ -1,4 +1,5 @@
 ﻿using Clbio.Application.DTOs.V1.Base;
+using Clbio.Domain.Enums;
 
 namespace Clbio.Application.DTOs.V1.Workspace
 {
@@ -9,6 +10,7 @@ namespace Clbio.Application.DTOs.V1.Workspace
         public string? Description { get; set; }
         public Guid OwnerId { get; set; }
         public string OwnerDisplayName { get; set; } = null!;
+        public WorkspaceStatus Status { get; set; }
 
         // Optional summary info
         public int MemberCount { get; set; }

@@ -2,6 +2,7 @@
 using Clbio.API.Extensions;
 using Clbio.Application.DTOs.V1.Auth;
 using Clbio.Application.DTOs.V1.Auth.External;
+using Clbio.Application.DTOs.V1.User;
 using Clbio.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -32,7 +33,7 @@ namespace Clbio.API.Controllers.v1.Auth
             if (!result.Success)
                 return BadRequest(ApiResponse<TokenResponseDto>.Fail(result.Error!, result.Code));
 
-            return Ok(ApiResponse<object>.Ok("You've registered successfully. Please verify your email to continue."));
+            return Ok(ApiResponse<ReadUserDto>.Ok(result.Value));
         }
 
         // ------------------------------------------------------------
@@ -150,7 +151,7 @@ namespace Clbio.API.Controllers.v1.Auth
         [AllowAnonymous]
         public async Task<IActionResult> VerifyEmail([FromBody] VerifyEmailOtpRequestDto dto, CancellationToken ct)
         {
-            var result = await _emailVerificationService.VerifyEmailOtpAsync(dto.UserId, dto.Otp, GetUserAgent(), GetIp(), ct);
+            var result = await _emailVerificationService.VerifyEmailOtpAsync(dto.Email, dto.Code, GetUserAgent(), GetIp(), ct);
 
             if (!result.Success)
                 return BadRequest(ApiResponse<object>.Fail(result.Error!, result.Code));
@@ -159,18 +160,18 @@ namespace Clbio.API.Controllers.v1.Auth
         }
 
         // ------------------------------------------------------------
-        // POST /api/auth/resend-verification-otp?userId=...
+        // POST /api/auth/resend-verification-otp
         // ------------------------------------------------------------
         [HttpPost("resend-verification-otp")]
         [AllowAnonymous]
-        public async Task<IActionResult> ResendVerificationOtp([FromQuery] Guid userId, CancellationToken ct)
+        public async Task<IActionResult> ResendVerificationOtp([FromBody] ResendEmailVerificationDto dto, CancellationToken ct)
         {
-            var result = await _emailVerificationService.ResendVerificationOtpEmailAsync(userId, ct);
+            var result = await _emailVerificationService.ResendVerificationOtpEmailAsync(dto.Email, ct);
 
             if (!result.Success)
                 return BadRequest(ApiResponse<object>.Fail(result.Error!, result.Code));
 
-            return Ok(ApiResponse<object>.Ok("Verification code resent successfully."));
+            return Ok(ApiResponse<object>.Ok("If an account with that email exists and is not already verified, a verification code has been resent successfully."));
         }
 
         // !!! DEV ENDPOINT

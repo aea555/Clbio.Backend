@@ -3,6 +3,7 @@ using Clbio.Domain.Entities.V1.Auth;
 using Clbio.Domain.Entities.V1.Base;
 using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
+using System.Reflection;
 
 namespace Clbio.Infrastructure.Data
 {
@@ -24,8 +25,24 @@ namespace Clbio.Infrastructure.Data
         {
             base.OnModelCreating(modelBuilder);
 
+            foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+            {
+                if (typeof(EntityBase).IsAssignableFrom(entityType.ClrType))
+                {
+                    var parameter = Expression.Parameter(entityType.ClrType, "e");
+
+                    var property = Expression.Property(parameter, nameof(EntityBase.IsDeleted));
+
+                    var notExpression = Expression.Not(property);
+
+                    var lambda = Expression.Lambda(notExpression, parameter);
+
+                    modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
+                }
+            }
+
             // Apply the soft delete query filter globally
-            ApplyGlobalQueryFilters(modelBuilder);
+            // ApplyGlobalQueryFilters(modelBuilder);
 
             // apply custom fluent api configs
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);
@@ -37,25 +54,26 @@ namespace Clbio.Infrastructure.Data
             }
         }
 
-        private void ApplyGlobalQueryFilters(ModelBuilder modelBuilder)
+        private void SetSoftDeleteFilter<T>(ModelBuilder builder) where T : EntityBase
+        {
+            builder.Entity<T>().HasQueryFilter(e => !e.IsDeleted);
+        }
+
+        private static void ApplyGlobalQueryFilters(ModelBuilder modelBuilder)
         {
             foreach (var entityType in modelBuilder.Model.GetEntityTypes())
             {
                 if (typeof(EntityBase).IsAssignableFrom(entityType.ClrType))
                 {
                     var parameter = Expression.Parameter(entityType.ClrType, "e");
-                    var isDeletedProp = Expression.Property(parameter, nameof(EntityBase.IsDeleted));
-                    var dbContextProp = Expression.Property(
-                        Expression.Constant(this), nameof(IsSoftDeleteFilterEnabled));
+                    var property = Expression.Property(parameter, nameof(EntityBase.IsDeleted));
+                    
+                    var falseConstant = Expression.Constant(false);
+                    var equalExpression = Expression.Equal(property, falseConstant);
 
-                    // Expression: !e.IsDeleted || !IsSoftDeleteFilterEnabled
-                    var filter = Expression.Lambda(
-                        Expression.OrElse(
-                            Expression.Not(isDeletedProp),
-                            Expression.Not(dbContextProp)),
-                        parameter);
+                    var lambda = Expression.Lambda(equalExpression, parameter);
 
-                    modelBuilder.Entity(entityType.ClrType).HasQueryFilter(filter);
+                    modelBuilder.Entity(entityType.ClrType).HasQueryFilter(lambda);
                 }
             }
         }

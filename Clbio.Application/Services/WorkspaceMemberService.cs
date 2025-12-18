@@ -111,28 +111,48 @@ namespace Clbio.Application.Services
                 }
 
                 // 2. already a member?
-                var exists = await _memberRepo.Query()
-                    .AnyAsync(m => m.WorkspaceId == workspaceId && m.UserId == targetUser.Id, ct);
+                var existingMember = await _memberRepo.Query()
+                    .IgnoreQueryFilters() 
+                    .FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == targetUser.Id, ct);
 
-                if (exists) throw new InvalidOperationException("User is already a member.");
+                WorkspaceMember memberToReturn;
 
-                // 3. add
-                var member = new WorkspaceMember
+                if (existingMember != null)
                 {
-                    WorkspaceId = workspaceId,
-                    UserId = targetUser.Id,
-                    Role = dto.Role
-                };
+                    if (!existingMember.IsDeleted)
+                    {
+                        throw new InvalidOperationException("User is already a member.");
+                    }
+                    existingMember.IsDeleted = false;
+                    existingMember.DeletedAt = null;
+                    existingMember.DeletedBy = null;
+                    existingMember.Role = dto.Role; 
+                    existingMember.CreatedAt = DateTime.UtcNow; 
 
-                await _memberRepo.AddAsync(member, ct);
+                    memberToReturn = existingMember;
+                }
+                else
+                {
+                    var newMember = new WorkspaceMember
+                    {
+                        WorkspaceId = workspaceId,
+                        UserId = targetUser.Id,
+                        Role = dto.Role
+                    };
+
+                    await _memberRepo.AddAsync(newMember, ct);
+                    memberToReturn = newMember;
+                }
+
                 await _uow.SaveChangesAsync(ct);
                 await _invalidator.InvalidateWorkspace(workspaceId);
                 await _cache.RemoveAsync(CacheKeys.UserWorkspaces(targetUser.Id));
 
                 // 4. Return & Notify
                 var createdMember = await _memberRepo.Query()
+                    .AsNoTracking()
                     .Include(m => m.User)
-                    .FirstAsync(m => m.Id == member.Id, ct);
+                    .FirstAsync(m => m.Id == memberToReturn.Id, ct);
 
                 var readDto = _mapper.Map<ReadWorkspaceMemberDto>(createdMember);
 
@@ -242,6 +262,9 @@ namespace Clbio.Application.Services
                         ct);
                 }
 
+                await _invalidator.InvalidateMembership(targetUserId, workspaceId);
+                await _invalidator.InvalidateWorkspace(workspaceId);
+                await _cache.RemoveAsync(CacheKeys.UserWorkspaces(targetUserId));
                 // notify the user they have been KICKED OUT
                 await _socketService.SendToUserAsync(targetUserId, "RemovedFromWorkspace", new { workspaceId }, ct);
 
@@ -289,6 +312,7 @@ namespace Clbio.Application.Services
 
             // Check actor membership
             var actorMember = await _memberRepo.Query()
+                .AsNoTracking()
                 .FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == actorId, ct);
 
             // if not global admin, require membership
@@ -297,6 +321,7 @@ namespace Clbio.Application.Services
 
             // target user
             var targetMember = await _memberRepo.Query()
+                .AsNoTracking()
                 .Include(m => m.User)
                 .FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == targetId, ct)
                 ?? throw new InvalidOperationException("Target member not found.");

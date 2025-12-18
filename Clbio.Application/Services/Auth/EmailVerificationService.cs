@@ -8,6 +8,7 @@ using Clbio.Application.Interfaces;
 using Clbio.Domain.Entities.V1;
 using Clbio.Domain.Entities.V1.Auth;
 using Clbio.Shared.Results;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -38,11 +39,20 @@ public sealed class EmailVerificationService(
     // --------------------------------------------------------------------
     // Send verification email (OTP)
     // --------------------------------------------------------------------
-    public async Task<Result> SendVerificationOtpEmailAsync(Guid userId, string displayName, string email, CancellationToken ct = default)
+    public async Task<Result> SendVerificationOtpEmailAsync(string email, string displayName, CancellationToken ct = default)
     {
         try
         {
-            var cooldownKey = $"otp:cooldown:{userId}";
+            var normalizedEmail = email.ToLowerInvariant().Trim();
+
+            var user = await _userRepo.Query()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Email == normalizedEmail, ct);
+
+            if (user == null) return Result.Fail("User not found.");
+            if (user.EmailVerified) return Result.Fail("Email is already verified.");
+
+            var cooldownKey = $"otp:cooldown:{normalizedEmail}";
             var inCooldown = await _cache.GetAsync<string>(cooldownKey);
 
             if (!string.IsNullOrEmpty(inCooldown))
@@ -52,8 +62,7 @@ public sealed class EmailVerificationService(
             
             // Generate OTP
             var otp = Random.Shared.Next(100000, 999999).ToString();
-
-            var key = $"otp:verify:{userId}";
+            var key = $"otp:verify:{normalizedEmail}";
             await _cache.SetAsync(key, otp, TimeSpan.FromMinutes(3));
 
             // Email
@@ -77,7 +86,7 @@ public sealed class EmailVerificationService(
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "SendVerificationOtpEmailAsync failed for user {UserId}", userId);
+            _logger?.LogError(ex, "SendVerificationOtpEmailAsync failed for user {Email}", email);
             return Result.Fail("Unable to send verification email.");
         }
     }
@@ -144,23 +153,28 @@ public sealed class EmailVerificationService(
     // --------------------------------------------------------------------
     // Verify OTP and mark email as verified
     // --------------------------------------------------------------------
-    public async Task<Result> VerifyEmailOtpAsync(Guid userId, string otp, string? userAgent,
+    public async Task<Result> VerifyEmailOtpAsync(string email, string code, string? userAgent,
         string? ipAddress, CancellationToken ct = default)
     {
         try
         {
-            var key = $"otp:verify:{userId}";
+            var normalizedEmail = email.ToLowerInvariant().Trim();
+            var user = await _userRepo.Query()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Email == normalizedEmail, ct) 
+            ?? throw new Exception("User not found.");
+
+            if (user.EmailVerified)
+                return Result.Fail("Email is already verified."); 
+
+            var key = $"otp:verify:{normalizedEmail}";
             var storedOtp = await _cache.GetAsync<string>(key);
 
             if (storedOtp is null)
                 return Result.Fail("Verification code expired or not found.");
 
-            if (string.Equals(storedOtp, otp) is false)
+            if (string.Equals(storedOtp, code) is false)
                 return Result.Fail("Invalid verification code.");
-
-            var user = await _userRepo.GetByIdAsync(userId, true, ct);
-            if (user is null)
-                return Result.Fail("User not found.");
 
             user.EmailVerified = true;
 
@@ -171,7 +185,7 @@ public sealed class EmailVerificationService(
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "VerifyEmailOtpAsync failed for user {UserId}", userId);
+            _logger?.LogError(ex, "VerifyEmailOtpAsync failed for user {Email}", email);
             return Result.Fail("Email verification failed.");
         }
     }
@@ -236,18 +250,20 @@ public sealed class EmailVerificationService(
     // --------------------------------------------------------------------
     // Resend verification OTP email
     // --------------------------------------------------------------------
-    public async Task<Result> ResendVerificationOtpEmailAsync(Guid userId, CancellationToken ct = default)
+    public async Task<Result> ResendVerificationOtpEmailAsync(string email, CancellationToken ct = default)
     {
         try
         {
-            var user = await _userRepo.GetByIdAsync(userId, false, ct);
-            if (user is null)
-                return Result.Fail("User not found.");
+            var normalizedEmail = email.ToLowerInvariant().Trim();
+            var user = await _userRepo.Query()
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Email == normalizedEmail, ct)
+            ?? throw new Exception("User not found.");
 
             if (user.EmailVerified)
                 return Result.Ok(); // Already verified
 
-            var cooldownKey = $"otp:cooldown:{userId}";
+            var cooldownKey = $"otp:cooldown:{normalizedEmail}";
             var inCooldown = await _cache.GetAsync<string>(cooldownKey);
 
             if (!string.IsNullOrEmpty(inCooldown))
@@ -255,7 +271,7 @@ public sealed class EmailVerificationService(
                 return Result.Fail("Please wait a few minutes before requesting a new code.");
             }
 
-            var sendResult = await SendVerificationOtpEmailAsync(user.Id, user.DisplayName, user.Email, ct);
+            var sendResult = await SendVerificationOtpEmailAsync(user.Email, user.DisplayName, ct);
 
             if (sendResult.Success)
             {
@@ -266,7 +282,7 @@ public sealed class EmailVerificationService(
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "ResendVerificationOtpEmailAsync failed for user {UserId}", userId);
+            _logger?.LogError(ex, "ResendVerificationOtpEmailAsync failed for user {Email}", email);
             return Result.Fail("Unable to resend verification email.");
         }
     }

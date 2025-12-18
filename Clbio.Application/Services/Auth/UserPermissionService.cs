@@ -23,6 +23,22 @@ namespace Clbio.Application.Services.Auth
 
         private readonly ILogger<UserPermissionService>? _logger = logger;
 
+        private static readonly HashSet<Permission> AllowedActionsOnArchivedWorkspace =
+        [
+            Permission.ArchiveWorkspace, 
+            Permission.DeleteWorkspace,  
+            Permission.RemoveMember,
+            Permission.ViewWorkspace,
+            Permission.ViewColumn,
+            Permission.ViewBoard,
+            Permission.ViewTask,
+            Permission.ViewComment,
+            Permission.ViewAttachment,
+            Permission.ViewMember,
+            Permission.ViewAuditLog,
+            Permission.ViewRole,
+        ];
+
         public async Task<Result<bool>> HasPermissionAsync(
             Guid userId,
             Permission permission,
@@ -67,6 +83,17 @@ namespace Clbio.Application.Services.Auth
 
                 if (workspace is null)
                     return Result<bool>.Fail("Workspace not found.");
+
+                if (workspace.Status == WorkspaceStatus.Archived)
+                {
+                    // (Read-Only Mode)
+                    bool isViewPermission = permission.ToString().StartsWith("View");
+
+                    if (!isViewPermission && !AllowedActionsOnArchivedWorkspace.Contains(permission))
+                    {
+                        return Result<bool>.Fail("This action cannot be performed on an archived workspace.");
+                    }
+                }
 
                 var membershipVersion =
                     await _versionService.GetMembershipVersionAsync(userId, workspaceId.Value);

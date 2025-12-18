@@ -134,18 +134,19 @@ namespace Clbio.Application.Services
                     throw new ArgumentException("ID mismatch");
 
                 var column = await _columnRepo.GetByIdAsync(id, true, ct)
-                             ?? throw new InvalidOperationException("Column not found.");
+                    ?? throw new InvalidOperationException("Column not found.");
+
+                var board = await _boardRepo.GetByIdAsync(column.BoardId, false, ct) ?? 
+                    throw new InvalidOperationException("Board not found.");
 
                 var columnDto = _mapper.Map(dto, column);
 
                 await _uow.SaveChangesAsync(ct);
 
-                // Cache Invalidation
-                var board = await _boardRepo.GetByIdAsync(column.BoardId, false, ct);
-                if (board != null)
-                {
-                    await _invalidator.InvalidateWorkspace(board.WorkspaceId);
-                }
+                await _invalidator.InvalidateWorkspace(board.WorkspaceId);
+
+                var readDto = _mapper.Map<ReadColumnDto>(column);
+                await _socketService.SendToWorkspaceAsync(board.WorkspaceId, "ColumnUpdated", readDto, ct);
 
             }, _logger, "COLUMN_UPDATE_FAILED");
         }
