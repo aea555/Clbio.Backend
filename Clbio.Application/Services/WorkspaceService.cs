@@ -16,6 +16,7 @@ namespace Clbio.Application.Services
 {
     public sealed class WorkspaceService(
         IUnitOfWork uow,
+        ICacheVersionService cacheVersionService,
         ICacheService cache,
         ISocketService socketService,
         ICacheInvalidationService invalidator,
@@ -30,6 +31,7 @@ namespace Clbio.Application.Services
         private readonly IRepository<Board> _boardRepo = uow.Repository<Board>();
 
         private readonly ICacheService _cache = cache;
+        private readonly ICacheVersionService _version = cacheVersionService;
         private readonly ISocketService _socketService = socketService;
         private readonly ICacheInvalidationService _invalidator = invalidator;
         private readonly ICacheVersionService _versions = versions;
@@ -204,6 +206,7 @@ namespace Clbio.Application.Services
                 await _uow.SaveChangesAsync(ct);
 
                 await _invalidator.InvalidateWorkspace(workspaceId);
+                await _version.BumpWorkspaceVersionAsync(workspaceId);
 
                 var readDto = _mapper.Map<ReadWorkspaceDto>(entity);
                 await _socketService.SendToWorkspaceAsync(workspaceId, "WorkspaceUpdated", readDto, ct);
@@ -228,6 +231,7 @@ namespace Clbio.Application.Services
                 await _uow.SaveChangesAsync(ct);
 
                 await _invalidator.InvalidateWorkspace(workspaceId);
+                await _version.BumpWorkspaceVersionAsync(workspaceId);
                 await _cache.RemoveAsync(CacheKeys.UserWorkspaces(entity.OwnerId));
 
                 await _socketService.SendToWorkspaceAsync(workspaceId, "WorkspaceArchived", new { Id = workspaceId }, ct);
@@ -252,6 +256,7 @@ namespace Clbio.Application.Services
                 await _uow.SaveChangesAsync(ct);
 
                 await _invalidator.InvalidateWorkspace(workspaceId);
+                await _version.BumpWorkspaceVersionAsync(workspaceId);
                 await _cache.RemoveAsync(CacheKeys.UserWorkspaces(entity.OwnerId));
                 
                 await _socketService.SendToWorkspaceAsync(workspaceId, "WorkspaceUnarchived", new { Id = workspaceId }, ct);
@@ -319,7 +324,9 @@ namespace Clbio.Application.Services
                     .ExecuteUpdateAsync(s => s.SetProperty(x => x.IsDeleted, true).SetProperty(x => x.DeletedAt, utcNow), ct);
                 await _uow.SaveChangesAsync(ct);
 
+                await _version.BumpWorkspaceVersionAsync(workspaceId);
                 await _invalidator.InvalidateWorkspace(workspaceId);
+                await _cache.RemoveAsync(CacheKeys.UserWorkspaces(entity.OwnerId));
                 await _socketService.SendToWorkspaceAsync(workspaceId, "WorkspaceDeleted", new { Id = workspaceId }, ct);
             }, _logger, "WORKSPACE_DELETE_FAILED");
         }
