@@ -1,4 +1,5 @@
 ﻿using Clbio.Application.DTOs.V1.Attachment;
+using Clbio.Application.DTOs.V1.TaskItem;
 using Clbio.Shared.Results;
 
 namespace Clbio.Application.Interfaces.EntityServices
@@ -12,6 +13,6 @@ namespace Clbio.Application.Interfaces.EntityServices
         CreateAttachmentDto dto, 
         Guid userId, 
         CancellationToken ct = default);
-        Task<Result> DeleteAsync(Guid workspaceId, Guid attachmentId, CancellationToken ct = default);
+        Task<Result<ReadTaskItemDto>> DeleteAsync(Guid workspaceId, Guid attachmentId, CancellationToken ct = default);
     }
 }

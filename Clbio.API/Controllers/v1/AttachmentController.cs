@@ -74,7 +74,7 @@ namespace Clbio.API.Controllers.v1
             if (!result.Success)
                 return BadRequest(ApiResponse.Fail(result.Error));
 
-            return Ok(ApiResponse.Ok("Attachment deleted successfully."));
+            return Ok(ApiResponse.Ok(result.Value));
         }
     }
 }
