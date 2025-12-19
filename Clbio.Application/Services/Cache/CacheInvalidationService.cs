@@ -67,5 +67,14 @@ namespace Clbio.Application.Services.Cache
             await _versions.IncrementInvitationVersionAsync(userId);
             await Sub.PublishAsync(RedisChannel.Literal(CacheChannels.InvitationInvalidated), userId.ToString());
         }
+
+        // ─────────────────────────────────────────────────────
+        // Board meta invalidation
+        // ─────────────────────────────────────────────────────
+        public async Task InvalidateBoardMeta(Guid boardId)
+        { 
+            await _cache.RemoveAsync(CacheKeys.BoardMetaWorkspaceId(boardId));
+            await Sub.PublishAsync(RedisChannel.Literal(CacheChannels.ColumnInvalidated), boardId.ToString());
+        }
     }
 }

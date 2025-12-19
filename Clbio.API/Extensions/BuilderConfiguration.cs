@@ -1,7 +1,12 @@
-﻿using Clbio.Abstractions.Interfaces.Services;
+﻿using Amazon.Runtime;
+using Amazon.S3;
+using Clbio.Abstractions.Interfaces.Infrastructure;
+using Clbio.Abstractions.Interfaces.Services;
 using Clbio.API.DependencyInjection;
 using Clbio.API.Services;
 using Clbio.Application.Settings;
+using Clbio.Infrastructure.Options;
+using Clbio.Infrastructure.Services;
 using StackExchange.Redis;
 
 namespace Clbio.API.Extensions
@@ -78,7 +83,35 @@ namespace Clbio.API.Extensions
 
             // google client config
             builder.Services.Configure<GoogleAuthSettings>(
-            builder.Configuration.GetSection("Auth:Google:ClientId"));
+            builder.Configuration.GetSection("Auth:Google"));
+
+            // aws
+            builder.Services.Configure<AwsSettings>(builder.Configuration.GetSection("AWS"));
+
+            var awsSettings = new AwsSettings();
+            builder.Configuration.GetSection("AWS").Bind(awsSettings);
+
+            var awsOptions = builder.Configuration.GetAWSOptions();
+
+            builder.Services.AddSingleton<IAmazonS3>(sp =>
+            {
+                var credentials = new BasicAWSCredentials(awsSettings.AccessKey, awsSettings.SecretKey);
+                var config = new AmazonS3Config
+                {
+                    RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(awsSettings.Region)
+                };
+
+                // MinIO check
+                if (!string.IsNullOrEmpty(awsSettings.ServiceUrl))
+                {
+                    config.ServiceURL = awsSettings.ServiceUrl;
+                    config.ForcePathStyle = true; 
+                }
+
+                return new AmazonS3Client(credentials, config);
+            });
+
+            builder.Services.AddSingleton<IFileStorageService, S3FileStorageService>();
 
             // add services
             builder.Services

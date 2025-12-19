@@ -143,6 +143,11 @@ namespace Clbio.Application.Services
                 await _uow.SaveChangesAsync(ct);
                 await _invalidator.InvalidateWorkspace(workspaceId);
 
+                await _cache.SetAsync(
+                    CacheKeys.TaskMetaWorkspaceId(task.Id), 
+                    workspaceId, 
+                    TimeSpan.FromDays(7));
+
                 var readDto = _mapper.Map<ReadTaskItemDto>(task);
 
                 // Real-Time
@@ -352,6 +357,8 @@ namespace Clbio.Application.Services
                 task.UpdatedAt = DateTime.UtcNow; 
                 
                 await _uow.SaveChangesAsync(ct);
+
+                await _invalidator.InvalidateWorkspace(workspaceId);
 
                 // 5. LOGGING & NOTIFICATIONS
                 var isUnassign = !targetUserId.HasValue;

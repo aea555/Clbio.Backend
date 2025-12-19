@@ -14,5 +14,7 @@ namespace Clbio.Abstractions.Interfaces.Repositories
         Task<T> AddAsync(T entity, CancellationToken ct = default);
         Task UpdateAsync(T entity, CancellationToken ct = default);
         Task DeleteAsync(Guid id, CancellationToken ct = default);
+        Task AddRangeAsync(IEnumerable<T> entities, CancellationToken ct = default);
+        Task DeleteRangeAsync(IEnumerable<Guid> ids, CancellationToken ct = default);
     }
 }

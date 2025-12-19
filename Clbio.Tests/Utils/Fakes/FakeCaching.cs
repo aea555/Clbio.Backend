@@ -49,6 +49,14 @@ namespace Clbio.Tests.Utils.Fakes
 
             return Task.CompletedTask;
         }
+
+        public Task RemoveAllAsync(IEnumerable<string> keys)
+        {
+            foreach (var key in keys)
+                _store.Remove(key);
+
+            return Task.CompletedTask;
+        }
     }
 
 
@@ -136,6 +144,9 @@ namespace Clbio.Tests.Utils.Fakes
             => Task.CompletedTask;
 
         public Task InvalidateUserInvitations(Guid userId)
+            => Task.CompletedTask;
+        
+        public Task InvalidateBoardMeta(Guid boardId)
             => Task.CompletedTask;
     }
 }

@@ -66,6 +66,9 @@ namespace Clbio.Application.Services
                 var version = await _versions.GetWorkspaceVersionAsync(workspaceId);
                 var key = CacheKeys.ColumnsByBoard(boardId, version);
 
+                _logger?.LogInformation("Fetching Columns for Board: {BoardId} | WS: {WsId} | Ver: {Ver} | Key: {Key}", 
+                    boardId, workspaceId, version, key);
+
                 var columnDtos = await _cache.GetOrSetAsync(
                     key,
                     async () =>
@@ -99,6 +102,10 @@ namespace Clbio.Application.Services
                 {
                     throw new UnauthorizedAccessException("Board does not belong to the specified workspace.");
                 }
+
+                var metaKey = CacheKeys.BoardMetaWorkspaceId(board.Id);
+
+                await _cache.SetAsync(metaKey, board.WorkspaceId, TimeSpan.FromDays(7));
 
                 var column = _mapper.Map<Column>(dto);
 
@@ -193,6 +200,13 @@ namespace Clbio.Application.Services
                         .Where(t => t.ColumnId == id)
                         .ExecuteUpdateAsync(s => s.SetProperty(t => t.IsDeleted, true)
                                                   .SetProperty(t => t.DeletedAt, DateTime.UtcNow), ct);
+
+                    var keysToRemove = taskIds
+                        .Select(tid => CacheKeys.TaskMetaWorkspaceId(tid))
+                        .ToList();
+
+                    if (keysToRemove.Count > 0)
+                        await _cache.RemoveAllAsync(keysToRemove);
                 }
 
                 await _columnRepo.DeleteAsync(id, ct);
