@@ -324,9 +324,26 @@ namespace Clbio.Application.Services
                     .ExecuteUpdateAsync(s => s.SetProperty(x => x.IsDeleted, true).SetProperty(x => x.DeletedAt, utcNow), ct);
                 await _uow.SaveChangesAsync(ct);
 
-                await _version.BumpWorkspaceVersionAsync(workspaceId);
                 await _invalidator.InvalidateWorkspace(workspaceId);
                 await _cache.RemoveAsync(CacheKeys.UserWorkspaces(entity.OwnerId));
+
+                if (boardIds.Count > 0)
+                {
+                    var keysToRemove = boardIds
+                        .Select(id => CacheKeys.BoardMetaWorkspaceId(id))
+                        .ToList();
+
+                    await _cache.RemoveAllAsync(keysToRemove);
+                }
+
+                if (boardIds.Count > 0)
+                {
+                    foreach (var bId in boardIds)
+                    {
+                        await _cache.RemoveAsync(CacheKeys.BoardMetaWorkspaceId(bId));
+                    }
+                }
+
                 await _socketService.SendToWorkspaceAsync(workspaceId, "WorkspaceDeleted", new { Id = workspaceId }, ct);
             }, _logger, "WORKSPACE_DELETE_FAILED");
         }

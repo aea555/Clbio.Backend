@@ -9,5 +9,6 @@ namespace Clbio.Abstractions.Interfaces.Cache
         Task InvalidateMembership(Guid userId, Guid workspaceId);
         Task InvalidateWorkspaceRole(WorkspaceRole role);
         Task InvalidateUserInvitations(Guid userId);
+        Task InvalidateBoardMeta(Guid boardId);
     }
 }

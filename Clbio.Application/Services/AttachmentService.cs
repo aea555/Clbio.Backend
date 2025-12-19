@@ -1,7 +1,9 @@
 ﻿using AutoMapper;
 using Clbio.Abstractions.Interfaces;
 using Clbio.Abstractions.Interfaces.Cache;
+using Clbio.Abstractions.Interfaces.Infrastructure; // IFileStorageService buradan geliyor
 using Clbio.Abstractions.Interfaces.Repositories;
+using Clbio.Abstractions.Interfaces.Services;
 using Clbio.Application.DTOs.V1.Attachment;
 using Clbio.Application.Extensions;
 using Clbio.Application.Interfaces.EntityServices;
@@ -16,20 +18,24 @@ namespace Clbio.Application.Services
     public class AttachmentService(
         IUnitOfWork uow,
         IMapper mapper,
+        ISocketService socketService,
         ICacheInvalidationService invalidator,
+        IFileStorageService fileStorage, 
         ILogger<AttachmentService>? logger = null)
         : ServiceBase<Attachment>(uow, logger), IAttachmentAppService
     {
-        private readonly IMapper _mapper = mapper;
-        private readonly ICacheInvalidationService _invalidator = invalidator;
         private readonly IRepository<TaskItem> _taskRepo = uow.Repository<TaskItem>();
         private readonly IRepository<Attachment> _attachRepo = uow.Repository<Attachment>();
 
+        // ---------------------------------------------------------------------
+        // GET ALL
+        // --------------------------------------------------------------------
         public async Task<Result<List<ReadAttachmentDto>>> GetAllAsync(Guid workspaceId, Guid taskId, CancellationToken ct = default)
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
                 var task = await _taskRepo.Query()
+                    .AsNoTracking()
                     .Include(t => t.Column).ThenInclude(c => c.Board)
                     .FirstOrDefaultAsync(t => t.Id == taskId, ct)
                     ?? throw new InvalidOperationException("Task not found.");
@@ -38,40 +44,99 @@ namespace Clbio.Application.Services
                     throw new UnauthorizedAccessException("Access denied.");
 
                 var attachments = await _attachRepo.Query()
+                    .AsNoTracking()
                     .Where(a => a.TaskId == taskId)
                     .Include(a => a.UploadedBy)
+                    .OrderByDescending(a => a.CreatedAt)
                     .ToListAsync(ct);
 
-                return _mapper.Map<List<ReadAttachmentDto>>(attachments);
+                return mapper.Map<List<ReadAttachmentDto>>(attachments);
             }, _logger, "ATTACHMENT_LIST_FAILED");
         }
 
-        public async Task<Result<ReadAttachmentDto>> CreateAsync(Guid workspaceId, CreateAttachmentDto dto, CancellationToken ct = default)
+        // ---------------------------------------------------------------------
+        // CREATE (UPLOAD)
+        // ---------------------------------------------------------------------
+
+        public async Task<Result<List<ReadAttachmentDto>>> CreateRangeAsync(
+            Guid workspaceId, 
+            Guid taskId,
+            CreateAttachmentDto dto, 
+            Guid userId, 
+            CancellationToken ct = default)
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
+                if (dto.Files == null || dto.Files.Count == 0)
+                    throw new InvalidOperationException("No files provided.");
+
+                if (dto.Files.Count > 5)
+                    throw new InvalidOperationException("You can upload maximum 5 files at a time.");
+
+                var totalSize = dto.Files.Sum(f => f.Length);
+                if (totalSize > 50 * 1024 * 1024)
+                    throw new InvalidOperationException("Total upload size exceeds 50MB limit.");
+
                 var task = await _taskRepo.Query()
+                    .AsNoTracking()
                     .Include(t => t.Column).ThenInclude(c => c.Board)
-                    .FirstOrDefaultAsync(t => t.Id == dto.TaskId, ct)
+                    .FirstOrDefaultAsync(t => t.Id == taskId, ct)
                     ?? throw new InvalidOperationException("Task not found.");
 
                 if (task.Column.Board.WorkspaceId != workspaceId)
                     throw new UnauthorizedAccessException("Access denied.");
 
-                var attachment = _mapper.Map<Attachment>(dto);
+                var uploadTasks = dto.Files.Select(async file =>
+                {
+                    if (file.Length > 10 * 1024 * 1024) 
+                        throw new InvalidOperationException($"File '{file.FileName}' exceeds 10MB limit.");
 
-                await _attachRepo.AddAsync(attachment, ct);
+                    var folderPath = $"workspaces/{workspaceId}/tasks/{taskId}";
+                    
+                    using var stream = file.OpenReadStream();
+                    
+                    var url = await fileStorage.UploadAsync(
+                        stream, 
+                        file.FileName, 
+                        file.ContentType, 
+                        folderPath, 
+                        ct);
+
+                    return new Attachment
+                    {
+                        TaskId = taskId,
+                        UploadedById = userId,
+                        FileName = file.FileName,
+                        ContentType = file.ContentType,
+                        SizeBytes = file.Length,
+                        Url = url,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                });
+
+                var attachments = await Task.WhenAll(uploadTasks);
+
+                await _attachRepo.AddRangeAsync(attachments, ct);
                 await _uow.SaveChangesAsync(ct);
-                await _invalidator.InvalidateWorkspace(workspaceId);
+                
+                await invalidator.InvalidateWorkspace(workspaceId);
 
-                var created = await _attachRepo.Query()
+                var createdIds = attachments.Select(a => a.Id).ToList();
+                
+                var createdEntities = await _attachRepo.Query()
+                    .AsNoTracking()
                     .Include(a => a.UploadedBy)
-                    .FirstAsync(a => a.Id == attachment.Id, ct);
+                    .Where(a => createdIds.Contains(a.Id))
+                    .ToListAsync(ct);
 
-                return _mapper.Map<ReadAttachmentDto>(created);
-            }, _logger, "ATTACHMENT_CREATE_FAILED");
+                return mapper.Map<List<ReadAttachmentDto>>(createdEntities);
+
+            }, _logger, "ATTACHMENT_BATCH_CREATE_FAILED");
         }
 
+        // ---------------------------------------------------------------------
+        // DELETE
+        // ---------------------------------------------------------------------
         public async Task<Result> DeleteAsync(Guid workspaceId, Guid attachmentId, CancellationToken ct = default)
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
@@ -84,9 +149,22 @@ namespace Clbio.Application.Services
                 if (attachment.Task.Column.Board.WorkspaceId != workspaceId)
                     throw new UnauthorizedAccessException("Access denied.");
 
+                try
+                {
+                    await fileStorage.DeleteAsync(attachment.Url, ct);
+                }
+                catch (Exception ex)
+                {
+                    // omit error
+                    _logger?.LogError(ex, "Failed to delete file from storage. Url: {Url}", attachment.Url);
+                }
+
                 await _attachRepo.DeleteAsync(attachmentId, ct);
                 await _uow.SaveChangesAsync(ct);
-                await _invalidator.InvalidateWorkspace(workspaceId);
+                
+                await invalidator.InvalidateWorkspace(workspaceId);
+                await socketService.SendToWorkspaceAsync(workspaceId, "WorkspaceAttachmentDeleted", new {workspaceId});
+
             }, _logger, "ATTACHMENT_DELETE_FAILED");
         }
     }

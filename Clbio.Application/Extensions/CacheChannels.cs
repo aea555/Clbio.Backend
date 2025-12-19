@@ -8,6 +8,7 @@
         public const string MembershipInvalidated = "cache:membership:invalidated";
         public const string GlobalRoleInvalidated = "cache:globalrole:invalidated";
         public const string InvitationInvalidated = "cache:invitations:invalidated";
+        public const string ColumnInvalidated = "cache:column:invalidated";
 
         // optional
         public const string FullReset = "cache:fullreset";

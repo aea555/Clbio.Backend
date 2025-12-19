@@ -10,5 +10,6 @@
 
         Task<T> GetOrSetAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null);
         Task RemoveAsync(string key);
+        Task RemoveAllAsync(IEnumerable<string> keys);
     }
 }

@@ -73,10 +73,11 @@ namespace Clbio.Infrastructure.Repositories.Base
 
         public virtual async Task UpdateAsync(T entity, CancellationToken ct = default)
         {
-            var ent = await GetByIdAsync(entity.Id, true, ct);
-            if (ent is null) return;
-
-            _dbSet.Update(entity);
+            if (_context.Entry(entity).State == EntityState.Detached)
+            {
+                var exists = await _dbSet.AnyAsync(e => e.Id == entity.Id, ct);
+                if(exists) _dbSet.Update(entity);
+            }
         }
 
         public virtual async Task DeleteAsync(Guid id, CancellationToken ct = default)
@@ -85,6 +86,23 @@ namespace Clbio.Infrastructure.Repositories.Base
             if (entity is null) return;
 
             _dbSet.Remove(entity);
+        }
+
+        public virtual async Task AddRangeAsync(IEnumerable<T> entities, CancellationToken ct = default)
+        {
+            await _dbSet.AddRangeAsync(entities, ct);
+        }
+
+        public virtual async Task DeleteRangeAsync(IEnumerable<Guid> ids, CancellationToken ct = default)
+        {            
+            var entities = await _dbSet
+                .Where(e => ids.Contains(e.Id))
+                .ToListAsync(ct);
+
+            if (entities.Count != 0)
+            {
+                _dbSet.RemoveRange(entities);
+            }
         }
 
         public async Task SaveChangesAsync() => await _context.SaveChangesAsync();

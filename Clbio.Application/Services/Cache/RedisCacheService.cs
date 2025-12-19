@@ -74,5 +74,17 @@ namespace Clbio.Application.Services.Cache
 
         public Task RemoveAsync(string key)
             => Db.KeyDeleteAsync(key);
+
+        // --------------------------------------------------------------------
+        // BATCH delete
+        // --------------------------------------------------------------------
+        public async Task RemoveAllAsync(IEnumerable<string> keys)
+        {
+            if (keys == null || !keys.Any()) return;
+
+            var redisKeys = keys.Select(k => (RedisKey)k).ToArray();
+
+            await Db.KeyDeleteAsync(redisKeys);
+        }
     }
 }

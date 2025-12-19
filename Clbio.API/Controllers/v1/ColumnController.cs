@@ -55,9 +55,6 @@ namespace Clbio.API.Controllers.v1
         [RequirePermission(Permission.UpdateColumn, "workspaceId")]
         public async Task<IActionResult> Update(Guid workspaceId, Guid boardId, Guid columnId, [FromBody] UpdateColumnDto dto, CancellationToken ct)
         {
-            if (dto.Id != columnId)
-                return BadRequest(ApiResponse.Fail("Column ID mismatch."));
-
             var result = await _service.UpdateAsync(columnId, dto, ct);
 
             if (!result.Success)

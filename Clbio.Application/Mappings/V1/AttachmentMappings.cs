@@ -8,14 +8,9 @@ namespace Clbio.Application.Mappings.V1
     {
         public AttachmentMappings()
         {
-            CreateMap<CreateAttachmentDto, Attachment>()
-                .ForMember(dest => dest.Id, opt => opt.Ignore())
-                .ForMember(dest => dest.Task, opt => opt.Ignore());
-
             CreateMap<Attachment, ReadAttachmentDto>()
-                .ForMember(dest => dest.UploadedByDisplayName, opt => opt.MapFrom(src => src.UploadedBy.DisplayName))
-                .ForMember(dest => dest.UploadedById, opt => opt.MapFrom(src => src.UploadedById))
-                .ForMember(dest => dest.ContentType, opt => opt.MapFrom(src => src.ContentType));
+                .ForMember(dest => dest.UploadedByDisplayName, opt => opt.MapFrom(src => src.UploadedBy != null ? src.UploadedBy.DisplayName : "Unknown"))
+                .ForMember(dest => dest.UploadedByAvatarUrl, opt => opt.MapFrom(src => src.UploadedBy != null ? src.UploadedBy.AvatarUrl : null));
         }
     }
 }

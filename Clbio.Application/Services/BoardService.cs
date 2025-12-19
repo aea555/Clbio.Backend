@@ -136,7 +136,12 @@ namespace Clbio.Application.Services
 
                 // bump workspace version
                 await _invalidator.InvalidateWorkspace(dto.WorkspaceId);
-                await _cache.RemoveAsync(CacheKeys.BoardMetaWorkspaceId(board.Id));
+
+                // cache priming
+                await _cache.SetAsync(
+                    CacheKeys.BoardMetaWorkspaceId(board.Id), 
+                    board.WorkspaceId, 
+                    TimeSpan.FromDays(7));
 
                 var readDto = _mapper.Map<ReadBoardDto>(board);
 
