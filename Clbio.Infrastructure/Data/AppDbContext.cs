@@ -125,5 +125,6 @@ namespace Clbio.Infrastructure.Data
         public DbSet<PasswordResetToken> PasswordResetTokens { get; set; } = null!;
         public DbSet<PasswordResetAttempt> PasswordResetAttempts { get; set; } = null!;
         public DbSet<LoginAttempt> LoginAttempts { get; set; } = null!;
+        public DbSet<WorkspaceInvitation> WorkspaceInvitations { get; set; } = null!;
     }
 }

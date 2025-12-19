@@ -26,6 +26,7 @@ namespace Clbio.Application.DependencyInjection
             services.AddScoped<INotificationAppService, NotificationService>();
             services.AddScoped<IAttachmentAppService, AttachmentService>();
             services.AddScoped<IActivityLogAppService, ActivityLogService>();
+            services.AddScoped<IWorkspaceInvitationAppService, WorkspaceInvitationService>();
             services.AddScoped<IAuthService, AuthService>();
             services.AddScoped<IAuthThrottlingService, AuthThrottlingService>();
             services.AddScoped<IEmailVerificationService, EmailVerificationService>();

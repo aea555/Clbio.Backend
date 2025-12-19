@@ -47,7 +47,8 @@ namespace Clbio.Application.Services
 
                 var boardDtos = await _cache.GetOrSetAsync(
                     key,
-                    async () => {
+                    async () =>
+                    {
                         var entities = await _boardRepo.Query()
                             .AsNoTracking()
                             .Where(b => b.WorkspaceId == workspaceId)
@@ -79,18 +80,18 @@ namespace Clbio.Application.Services
                         var wsId = await _boardRepo.Query()
                             .AsNoTracking()
                             .Where(b => b.Id == boardId)
-                            .Select(b => b.WorkspaceId) 
+                            .Select(b => b.WorkspaceId)
                             .FirstOrDefaultAsync(ct);
 
-                        if (wsId == Guid.Empty) 
-                            return Guid.Empty; 
+                        if (wsId == Guid.Empty)
+                            return Guid.Empty;
 
                         return wsId;
                     },
-                    TimeSpan.FromDays(7)); 
-                
+                    TimeSpan.FromDays(7));
+
                 if (actualWorkspaceId == Guid.Empty)
-                    return null; 
+                    return null;
 
                 if (actualWorkspaceId != workspaceId)
                     throw new UnauthorizedAccessException("Access to this board is denied under the current workspace.");
@@ -276,6 +277,42 @@ namespace Clbio.Application.Services
 
                 await _socketService.SendToWorkspaceAsync(workspaceId, "BoardReordered", boardOrder, ct);
             }, _logger, "BOARD_REORDER_FAILED");
+        }
+
+        public async Task<Result<List<ReadBoardDto>>> SearchAsync(Guid workspaceId, string? searchTerm, int maxResults = 10, CancellationToken ct = default)
+        {
+            return await SafeExecution.ExecuteSafeAsync(async () =>
+            {
+                if (maxResults > 20) maxResults = 20; 
+                if (maxResults < 1) maxResults = 10;
+
+                _logger?.LogInformation("Searching for '{Term}' in Workspace '{WsId}'", searchTerm, workspaceId);
+
+                if (string.IsNullOrWhiteSpace(searchTerm))
+                {
+                    var allResult = await GetAllAsync(workspaceId, ct);
+                    if (!allResult.Success) return []; 
+
+                    return allResult.Value
+                        .OrderByDescending(b => b.UpdatedAt ?? b.CreatedAt) 
+                        .Take(maxResults)
+                        .ToList();
+                }
+
+                // SENARYO 2: Arama yapılıyor
+                var term = searchTerm.Trim();
+
+                var entities = await _boardRepo.Query()
+                    .AsNoTracking()
+                    .Where(b => b.WorkspaceId == workspaceId && 
+                                EF.Functions.Like(b.Name, $"%{term}%"))
+                    .OrderByDescending(b => b.UpdatedAt ?? b.CreatedAt)
+                    .Take(maxResults) 
+                    .ToListAsync(ct);
+                
+                return _mapper.Map<List<ReadBoardDto>>(entities);
+
+            }, _logger, "BOARD_SEARCH_FAILED");
         }
     }
 }

@@ -44,9 +44,7 @@ namespace Clbio.Application.Services.Cache
         // ─────────────────────────────────────────────────────
         public async Task InvalidateMembership(Guid userId, Guid workspaceId)
         {
-            // Explicit deletion of the specific membership cache alongside version bump 
-            var wsVersion = await _versions.GetWorkspaceVersionAsync(workspaceId);
-            await _cache.RemoveAsync(CacheKeys.Membership(userId, workspaceId, wsVersion));
+            await _versions.IncrementMembershipVersionAsync(userId, workspaceId);
 
             await Sub.PublishAsync(RedisChannel.Literal(CacheChannels.MembershipInvalidated),
                 $"{userId}:{workspaceId}");
@@ -59,6 +57,15 @@ namespace Clbio.Application.Services.Cache
         {
             await _versions.BumpWorkspaceRoleVersionAsync(role);
             await Sub.PublishAsync(RedisChannel.Literal(CacheChannels.WorkspaceRoleInvalidated), role.ToString());
+        }
+
+        // ─────────────────────────────────────────────────────
+        // INVITATIONS invalidation (Workspace Role)
+        // ─────────────────────────────────────────────────────
+        public async Task InvalidateUserInvitations(Guid userId)
+        {
+            await _versions.IncrementInvitationVersionAsync(userId);
+            await Sub.PublishAsync(RedisChannel.Literal(CacheChannels.InvitationInvalidated), userId.ToString());
         }
     }
 }

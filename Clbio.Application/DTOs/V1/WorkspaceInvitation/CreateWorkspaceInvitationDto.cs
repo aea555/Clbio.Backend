@@ -1,18 +1,16 @@
-﻿using Clbio.Application.DTOs.V1.Base;
-using Clbio.Domain.Enums;
 using System.ComponentModel.DataAnnotations;
+using Clbio.Application.DTOs.V1.Base;
+using Clbio.Domain.Enums;
 
-namespace Clbio.Application.DTOs.V1.WorkspaceMember
+namespace Clbio.Application.DTOs.V1.WorkspaceInvitation
 {
-    public class CreateWorkspaceMemberDto : RequestDtoBase
+    public class CreateWorkspaceInvitationDto : RequestDtoBase
     {
-        [Required]
-        public Guid WorkspaceId { get; set; }
-
         [Required]
         [EmailAddress]
         [MaxLength(320)]
         public string Email { get; set; } = string.Empty;
+
         [Required]
         [EnumDataType(typeof(WorkspaceRole), ErrorMessage = "Invalid Role value.")]
         public WorkspaceRole Role { get; set; } = WorkspaceRole.Member;

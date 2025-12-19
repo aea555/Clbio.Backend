@@ -42,7 +42,7 @@ namespace Clbio.Application.Services
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
                 var version = await _versions.GetWorkspaceVersionAsync(workspaceId);
-                
+
                 var key = CacheKeys.WorkspaceMembers(workspaceId, version);
 
                 var memberDtos = await _cache.GetOrSetAsync(
@@ -52,7 +52,7 @@ namespace Clbio.Application.Services
                         var members = await _memberRepo.Query()
                             .AsNoTracking()
                             .Where(m => m.WorkspaceId == workspaceId)
-                            .Include(m => m.User) 
+                            .Include(m => m.User)
                             .ToListAsync(ct);
 
                         return _mapper.Map<List<ReadWorkspaceMemberDto>>(members);
@@ -61,7 +61,7 @@ namespace Clbio.Application.Services
 
                 return memberDtos ?? [];
 
-                }, _logger, "MEMBER_LIST_FAILED");
+            }, _logger, "MEMBER_LIST_FAILED");
         }
 
         // ---------------------------------------------------------------------
@@ -90,7 +90,7 @@ namespace Clbio.Application.Services
                 {
                     throw new InvalidOperationException("You cannot add yourself as a member.");
                 }
-                
+
                 var workspaceName = await _workspaceRepo.Query()
                     .Where(w => w.Id == workspaceId)
                     .Select(w => w.Name)
@@ -112,7 +112,7 @@ namespace Clbio.Application.Services
 
                 // 2. already a member?
                 var existingMember = await _memberRepo.Query()
-                    .IgnoreQueryFilters() 
+                    .IgnoreQueryFilters()
                     .FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == targetUser.Id, ct);
 
                 WorkspaceMember memberToReturn;
@@ -126,8 +126,8 @@ namespace Clbio.Application.Services
                     existingMember.IsDeleted = false;
                     existingMember.DeletedAt = null;
                     existingMember.DeletedBy = null;
-                    existingMember.Role = dto.Role; 
-                    existingMember.CreatedAt = DateTime.UtcNow; 
+                    existingMember.Role = dto.Role;
+                    existingMember.CreatedAt = DateTime.UtcNow;
 
                     memberToReturn = existingMember;
                 }
@@ -185,7 +185,7 @@ namespace Clbio.Application.Services
                     .FirstOrDefaultAsync(ct);
 
                 // fetch actor and target
-                var (actorMember, targetMember, actorUser) = await GetActorAndTargetAsync(workspaceId, actorUserId, targetUserId, ct);
+                var (actorMember, targetMember, actorUser) = await GetActorAndTargetAsync(workspaceId, actorUserId, targetUserId, ct, trackTarget: true);
 
                 // --- HIERARCHY CHECK ---
                 // Global Admin Check
@@ -204,24 +204,29 @@ namespace Clbio.Application.Services
                         throw new InvalidOperationException("Ownership cannot be transferred via role update.");
                 }
 
-                // apply
+                var isSameRole = targetMember.Role == newRole;
                 targetMember.Role = newRole;
-                await _uow.SaveChangesAsync(ct);
-                await _invalidator.InvalidateMembership(targetUserId, workspaceId);
-                await _invalidator.InvalidateWorkspace(workspaceId);
-
                 var readDto = _mapper.Map<ReadWorkspaceMemberDto>(targetMember);
 
-                if (targetUserId != actorUserId)
+                if (!isSameRole)
                 {
-                    await _notificationService.SendNotificationAsync(
-                        targetUserId,
-                        "Role Updated",
-                        $"{actorUser.DisplayName} changed your role in '{workspaceName}' to {newRole}.",
-                        ct);
-                }
+                    // apply
+                    await _uow.SaveChangesAsync(ct);
+                    await _invalidator.InvalidateMembership(targetUserId, workspaceId);
+                    await _invalidator.InvalidateWorkspace(workspaceId);
 
-                await _socketService.SendToWorkspaceAsync(workspaceId, "MemberUpdated", readDto, ct);
+                    if (targetUserId != actorUserId)
+                    {
+                        await _notificationService.SendNotificationAsync(
+                            targetUserId,
+                            "Role Updated",
+                            $"{actorUser.DisplayName} changed your role in '{workspaceName}' to {newRole}.",
+                            ct);
+                    }
+
+                    await _socketService.SendToWorkspaceAsync(workspaceId, "MemberUpdated", readDto, ct);
+                    await _socketService.SendToUserAsync(targetUserId, "WorkspaceRoleUpdated", new { workspaceId }, ct);
+                }
 
                 return readDto;
 
@@ -238,7 +243,7 @@ namespace Clbio.Application.Services
                 if (targetUserId == actorUserId)
                     throw new InvalidOperationException("Use 'Leave' endpoint to remove yourself.");
 
-                var (actorMember, targetMember, actorUser) = await GetActorAndTargetAsync(workspaceId, actorUserId, targetUserId, ct);
+                var (actorMember, targetMember, actorUser) = await GetActorAndTargetAsync(workspaceId, actorUserId, targetUserId, ct, trackTarget: false);
 
                 if (actorUser.GlobalRole != GlobalRole.Admin)
                 {
@@ -279,6 +284,7 @@ namespace Clbio.Application.Services
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
                 var member = await _memberRepo.Query()
+                    .AsNoTracking()
                     .FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == userId, ct)
                     ?? throw new InvalidOperationException("You are not a member of this workspace.");
 
@@ -294,7 +300,13 @@ namespace Clbio.Application.Services
                 }
 
                 await PerformRemove(workspaceId, member, ct);
-                
+                await _invalidator.InvalidateMembership(userId, workspaceId);
+                await _invalidator.InvalidateWorkspace(workspaceId);
+                await _cache.RemoveAsync(CacheKeys.UserWorkspaces(userId));
+
+                await _socketService.SendToWorkspaceAsync(workspaceId, "UserLeftWorkspace", new { workspaceId }, ct);
+                await _socketService.SendToUserAsync(userId, "LeftWorkspace", new { workspaceId }, ct);
+
             }, _logger, "MEMBER_LEAVE_FAILED");
         }
 
@@ -302,7 +314,8 @@ namespace Clbio.Application.Services
         // PRIVATE HELPERS 
         // ---------------------------------------------------------------------
 
-        private async Task<(WorkspaceMember? Actor, WorkspaceMember Target, User ActorUser)> GetActorAndTargetAsync(Guid workspaceId, Guid actorId, Guid targetId, CancellationToken ct)
+        private async Task<(WorkspaceMember? Actor, WorkspaceMember Target, User ActorUser)> GetActorAndTargetAsync(
+            Guid workspaceId, Guid actorId, Guid targetId, CancellationToken ct, bool trackTarget = false)
         {
             var actorUser = await _userRepo.GetByIdAsync(actorId, false, ct)
                             ?? throw new InvalidOperationException("Actor user not found.");
@@ -319,12 +332,18 @@ namespace Clbio.Application.Services
             if (actorUser.GlobalRole != GlobalRole.Admin && actorMember == null)
                 throw new UnauthorizedAccessException("You are not a member of this workspace.");
 
+            var targetQuery = _memberRepo.Query();
+
+            if (!trackTarget)
+            {
+                targetQuery = targetQuery.AsNoTracking();
+            }
+
             // target user
-            var targetMember = await _memberRepo.Query()
-                .AsNoTracking()
+            var targetMember = await targetQuery
                 .Include(m => m.User)
                 .FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == targetId, ct)
-                ?? throw new InvalidOperationException("Target member not found.");
+                    ?? throw new InvalidOperationException("Target member not found.");
 
             return (actorMember, targetMember, actorUser);
         }

@@ -1,5 +1,7 @@
 ﻿using Clbio.API.Extensions;
 using Clbio.API.Extensions.Attributes;
+using Clbio.Application.DTOs.V1.Base;
+using Clbio.Application.DTOs.V1.Notification;
 using Clbio.Application.Interfaces.EntityServices;
 using Clbio.Domain.Enums;
 using Microsoft.AspNetCore.Mvc;
@@ -46,25 +48,22 @@ namespace Clbio.API.Controllers.v1
             if (!result.Success)
                 return BadRequest(ApiResponse.Fail(result.Error!, result.Code));
 
-            // returning data:
-            // {
-            //    "success": true,
-            //    "data": {
-            //        "items": [ ... ],
-            //        "total": 150,
-            //        "page": 1,
-            //        "pageSize": 20,
-            //        "unreadOnly": false
-            //    }
-            // }
-            return Ok(ApiResponse.Ok(new
+            var (items, totalCount) = result.Value;
+
+            var resp = new ReadNotificationPagedReturnDto
             {
-                items = result.Value.Items,
-                total = result.Value.TotalCount,
-                page,
-                pageSize,
-                unreadOnly
-            }));
+                Items = items,
+                Meta = new PagedMetaDto
+                {
+                    TotalCount = totalCount,
+                    Page = page,
+                    PageSize = pageSize,
+                    TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+                    UnreadOnly = unreadOnly
+                }
+            };
+            
+            return Ok(ApiResponse.Ok(resp));
         }
 
         [HttpPatch("{id:guid}/read")]

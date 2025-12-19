@@ -26,6 +26,7 @@ namespace Clbio.Application.Services
         private readonly ISocketService _socketService = socketService;
         private readonly ICacheService _cache = cache;
         private readonly IRepository<Notification> _notifRepo = uow.Repository<Notification>();
+        public record NotificationCountCacheDto(int Count);
 
         public async Task<Result<int>> GetUnreadCountAsync(Guid userId, CancellationToken ct = default)
         {
@@ -33,18 +34,20 @@ namespace Clbio.Application.Services
             {
                 var key = CacheKeys.NotificationCount(userId);
 
-                var count = await _cache.GetOrSetAsync(
+                var cacheResult = await _cache.GetOrSetAsync(
                     key,
                     async () =>
                     {
-                        return await _notifRepo.Query()
+                        var count = await _notifRepo.Query()
                             .AsNoTracking()
                             .Where(n => n.UserId == userId && !n.IsRead)
                             .CountAsync(ct);
+                        
+                        return new NotificationCountCacheDto(count);
                     },
                     TimeSpan.FromHours(2));
 
-                return count;
+                return cacheResult?.Count ?? 0;
             }, _logger, "NOTIF_COUNT_FAILED");
         }
 

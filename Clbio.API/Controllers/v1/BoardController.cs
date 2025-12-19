@@ -117,5 +117,16 @@ namespace Clbio.API.Controllers.v1
 
             return Ok(ApiResponse.Ok("Boards reordered."));
         }
+
+        [HttpGet("search")]
+        [RequirePermission(Permission.ViewBoard, "workspaceId")]
+        public async Task<IActionResult> Search(
+            [FromRoute] Guid workspaceId,
+            [FromQuery] string? q,
+            [FromQuery] int? limit = 10) // Default 10
+        {
+            var result = await _service.SearchAsync(workspaceId, q ?? "", limit ?? 10); 
+            return result.ToActionResult();
+        }
     }
 }

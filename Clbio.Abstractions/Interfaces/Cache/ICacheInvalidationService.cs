@@ -8,5 +8,6 @@ namespace Clbio.Abstractions.Interfaces.Cache
         Task InvalidateWorkspace(Guid workspaceId);
         Task InvalidateMembership(Guid userId, Guid workspaceId);
         Task InvalidateWorkspaceRole(WorkspaceRole role);
+        Task InvalidateUserInvitations(Guid userId);
     }
 }
