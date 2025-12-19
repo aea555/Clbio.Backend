@@ -86,5 +86,15 @@ namespace Clbio.Application.Extensions
         // ─────────────────────────────────────────────────────
         public static string TaskComments(Guid taskId) 
             => $"comments:task:{taskId}";
+        
+        // ─────────────────────────────────────────────────────
+        // INVITATIONS
+        // ─────────────────────────────────────────────────────
+        public static string UserInvitationVersion(Guid userId) 
+            => $"version:invitations:{userId}";
+
+        // Sayfalanmış liste key'i
+        public static string UserInvitationsPaged(Guid userId, int page, int pageSize, long version) 
+            => $"invitations:paged:v{version}:{userId}:{page}:{pageSize}";
     }
 }

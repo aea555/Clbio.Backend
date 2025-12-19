@@ -104,6 +104,17 @@ namespace Clbio.Tests.Utils.Fakes
             _versions[key] = v;
             return Task.FromResult(v);
         }
+
+        public Task<long> GetInvitationVersionAsync(Guid userId)
+            => Task.FromResult(Ensure($"ver:invitations:{userId}"));
+
+        public Task<long> IncrementInvitationVersionAsync(Guid userId)
+        {
+            var key = $"ver:invitations:{userId}";
+            var v = Ensure(key) + 1;
+            _versions[key] = v;
+            return Task.FromResult(v);
+        }
     }
 
 
@@ -122,6 +133,9 @@ namespace Clbio.Tests.Utils.Fakes
             => Task.CompletedTask;
 
         public Task InvalidateUser(Guid userId)
+            => Task.CompletedTask;
+
+        public Task InvalidateUserInvitations(Guid userId)
             => Task.CompletedTask;
     }
 }

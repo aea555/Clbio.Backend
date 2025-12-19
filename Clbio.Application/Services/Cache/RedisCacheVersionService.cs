@@ -37,6 +37,15 @@ namespace Clbio.Application.Services.Cache
             => _db.StringIncrementAsync(CacheKeys.MembershipVersionKey(userId, workspaceId));
 
         // ------------------------------------------------------------
+        // INVITATION VERSION 
+        // ------------------------------------------------------------
+        public Task<long> GetInvitationVersionAsync(Guid userId)
+            => GetOrInitVersionAsync(CacheKeys.UserInvitationVersion(userId));
+
+        public Task<long> IncrementInvitationVersionAsync(Guid userId)
+            => _db.StringIncrementAsync(CacheKeys.UserInvitationVersion(userId));
+
+        // ------------------------------------------------------------
         // Generic version helper
         // ------------------------------------------------------------
         private async Task<long> GetOrInitVersionAsync(string key)
