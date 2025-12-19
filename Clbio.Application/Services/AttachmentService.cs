@@ -120,8 +120,6 @@ namespace Clbio.Application.Services
                 await _attachRepo.AddRangeAsync(attachments, ct);
                 await _uow.SaveChangesAsync(ct);
                 
-                await invalidator.InvalidateWorkspace(workspaceId);
-
                 var createdIds = attachments.Select(a => a.Id).ToList();
                 
                 var createdEntities = await _attachRepo.Query()
@@ -129,6 +127,9 @@ namespace Clbio.Application.Services
                     .Include(a => a.UploadedBy)
                     .Where(a => createdIds.Contains(a.Id))
                     .ToListAsync(ct);
+
+                await invalidator.InvalidateWorkspace(workspaceId);
+                await socketService.SendToWorkspaceAsync(workspaceId, "WorkspaceAttachmentCreated", new {workspaceId, taskId});
 
                 return mapper.Map<List<ReadAttachmentDto>>(createdEntities);
 
