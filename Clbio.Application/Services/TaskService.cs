@@ -149,9 +149,14 @@ namespace Clbio.Application.Services
                     TimeSpan.FromDays(7));
 
                 var readDto = _mapper.Map<ReadTaskItemDto>(task);
+                
 
                 // Real-Time
-                await _socketService.SendToWorkspaceAsync(workspaceId, "TaskCreated", readDto, ct);
+                await _socketService.SendToWorkspaceAsync(workspaceId, "TaskCreated", new 
+                { 
+                    Task = readDto, 
+                    BoardId = column.Board.Id
+                }, ct);
 
                 await _activityLog.LogAsync(workspaceId, actorId, "Task", task.Id, "Create", $"Task '{task.Title}' created.", ct);
 
@@ -254,7 +259,11 @@ namespace Clbio.Application.Services
                 await _invalidator.InvalidateWorkspace(workspaceId);
 
                 var readDto = _mapper.Map<ReadTaskItemDto>(task);
-                await _socketService.SendToWorkspaceAsync(workspaceId, "TaskUpdated", readDto, ct);
+                await _socketService.SendToWorkspaceAsync(workspaceId, "TaskUpdated", new
+                {
+                    Task = readDto,
+                    task.Column.BoardId
+                }, ct);
             }, _logger, "TASK_UPDATE_FAILED");
         }
 
@@ -263,6 +272,7 @@ namespace Clbio.Application.Services
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
                 var task = await _taskRepo.Query()
+                    .AsNoTracking()
                     .Include(t => t.Column).ThenInclude(c => c.Board)
                     .FirstOrDefaultAsync(t => t.Id == taskId, ct)
                     ?? throw new InvalidOperationException("Task not found.");

@@ -28,6 +28,18 @@ namespace Clbio.API.Controllers.v1
             return Ok(ApiResponse.Ok(result.Value));
         }
 
+        [HttpGet("{taskId:guid}")]
+        [RequirePermission(Permission.ViewTask, "workspaceId")]
+        public async Task<IActionResult> GetById(Guid taskId, CancellationToken ct)
+        {
+            var result = await _service.GetByIdAsync(taskId, ct);
+
+            if (!result.Success)
+                return BadRequest(ApiResponse.Fail(result.Error!, result.Code));
+
+            return Ok(ApiResponse.Ok(result.Value));
+        }
+
         [HttpPost]
         [RequirePermission(Permission.CreateTask, "workspaceId")]
         public async Task<IActionResult> Create(Guid workspaceId, [FromBody] CreateTaskItemDto dto, CancellationToken ct)

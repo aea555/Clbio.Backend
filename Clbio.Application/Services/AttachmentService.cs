@@ -5,6 +5,7 @@ using Clbio.Abstractions.Interfaces.Infrastructure; // IFileStorageService burad
 using Clbio.Abstractions.Interfaces.Repositories;
 using Clbio.Abstractions.Interfaces.Services;
 using Clbio.Application.DTOs.V1.Attachment;
+using Clbio.Application.DTOs.V1.TaskItem;
 using Clbio.Application.Extensions;
 using Clbio.Application.Interfaces.EntityServices;
 using Clbio.Application.Services.Base;
@@ -119,8 +120,6 @@ namespace Clbio.Application.Services
                 await _attachRepo.AddRangeAsync(attachments, ct);
                 await _uow.SaveChangesAsync(ct);
                 
-                await invalidator.InvalidateWorkspace(workspaceId);
-
                 var createdIds = attachments.Select(a => a.Id).ToList();
                 
                 var createdEntities = await _attachRepo.Query()
@@ -128,6 +127,9 @@ namespace Clbio.Application.Services
                     .Include(a => a.UploadedBy)
                     .Where(a => createdIds.Contains(a.Id))
                     .ToListAsync(ct);
+
+                await invalidator.InvalidateWorkspace(workspaceId);
+                await socketService.SendToWorkspaceAsync(workspaceId, "WorkspaceAttachmentCreated", new {workspaceId, taskId});
 
                 return mapper.Map<List<ReadAttachmentDto>>(createdEntities);
 
@@ -137,11 +139,12 @@ namespace Clbio.Application.Services
         // ---------------------------------------------------------------------
         // DELETE
         // ---------------------------------------------------------------------
-        public async Task<Result> DeleteAsync(Guid workspaceId, Guid attachmentId, CancellationToken ct = default)
+        public async Task<Result<ReadTaskItemDto>> DeleteAsync(Guid workspaceId, Guid attachmentId, CancellationToken ct = default)
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
                 var attachment = await _attachRepo.Query()
+                    .AsNoTracking()
                     .Include(a => a.Task).ThenInclude(t => t.Column).ThenInclude(c => c.Board)
                     .FirstOrDefaultAsync(a => a.Id == attachmentId, ct)
                     ?? throw new InvalidOperationException("Attachment not found.");
@@ -164,6 +167,10 @@ namespace Clbio.Application.Services
                 
                 await invalidator.InvalidateWorkspace(workspaceId);
                 await socketService.SendToWorkspaceAsync(workspaceId, "WorkspaceAttachmentDeleted", new {workspaceId});
+
+                var readDto = mapper.Map<ReadTaskItemDto>(attachment.Task);
+
+                return readDto;
 
             }, _logger, "ATTACHMENT_DELETE_FAILED");
         }

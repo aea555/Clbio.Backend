@@ -131,38 +131,44 @@ namespace Clbio.Application.Services
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
                 var comment = await _commentRepo.Query()
+                    .AsNoTracking()
                     .Include(c => c.Task)
                         .ThenInclude(t => t.Column)
                             .ThenInclude(col => col.Board)
-                            .Select(c => new { c.Id, c.AuthorId, c.TaskId, Task = c.Task })
                     .FirstOrDefaultAsync(c => c.Id == commentId, ct)
                     ?? throw new InvalidOperationException("Comment not found.");
+
+                if (comment.Task == null || comment.Task.Column == null || comment.Task.Column.Board == null)
+                    throw new InvalidOperationException("Comment hierarchy is corrupted.");
 
                 if (comment.Task.Column.Board.WorkspaceId != workspaceId)
                     throw new UnauthorizedAccessException("Comment is outside the workspace scope.");
 
                 var currentUser = await _userRepo.GetByIdAsync(currentUserId, false, ct)
-                                  ?? throw new InvalidOperationException("User not found.");
+                                ?? throw new InvalidOperationException("User not found.");
 
                 if (currentUser.GlobalRole == GlobalRole.Admin)
                 {
                     await PerformDelete(workspaceId, commentId, ct);
+                    await _cache.RemoveAsync(CacheKeys.TaskComments(comment.TaskId));
                     return;
                 }
 
                 if (comment.AuthorId == currentUserId)
                 {
                     await PerformDelete(workspaceId, commentId, ct);
+                    await _cache.RemoveAsync(CacheKeys.TaskComments(comment.TaskId));
                     return;
                 }
 
+                // 3. Hiyerarşik Yetki Kontrolü (Workspace Role)
                 var currentMember = await _memberRepo.Query()
-                    .FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == currentUserId, ct);
-
-                if (currentMember == null)
-                    throw new UnauthorizedAccessException("You are not a member of this workspace.");
+                    .AsNoTracking()
+                    .FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == currentUserId, ct)
+                 ?? throw new UnauthorizedAccessException("You are not a member of this workspace.");
 
                 var authorMember = await _memberRepo.Query()
+                    .AsNoTracking()
                     .FirstOrDefaultAsync(m => m.WorkspaceId == workspaceId && m.UserId == comment.AuthorId, ct);
 
                 int authorRoleValue = authorMember != null ? (int)authorMember.Role : -1;
