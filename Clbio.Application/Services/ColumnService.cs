@@ -212,7 +212,7 @@ namespace Clbio.Application.Services
                 await _columnRepo.DeleteAsync(id, ct);
                 await _uow.SaveChangesAsync(ct);
                 await _invalidator.InvalidateWorkspace(workspaceId);
-                await _socketService.SendToWorkspaceAsync(workspaceId, "ColumnDeleted", new { Id = id, BoardId = board.Id }, ct);
+                await _socketService.SendToWorkspaceAsync(workspaceId, "ColumnDeleted", new { ColumnId = id, BoardId = board.Id }, ct);
             }, _logger, "COLUMN_DELETE_FAILED");
         }
 
