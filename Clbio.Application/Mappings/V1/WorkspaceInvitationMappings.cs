@@ -19,7 +19,7 @@ namespace Clbio.Application.Mappings.V1
             // --------------------------------------------------------
             CreateMap<WorkspaceInvitation, ReadWorkspaceInvitationDto>()
                 .ForMember(dest => dest.WorkspaceName, opt => opt.MapFrom(src => src.Workspace != null ? src.Workspace.Name : string.Empty))
-                .ForMember(dest => dest.InviterName, opt => opt.Ignore());
+                .ForMember(dest => dest.InviterName, opt => opt.MapFrom(src => src.InviterName));
         }
     }
 }

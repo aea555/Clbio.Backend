@@ -84,7 +84,7 @@ namespace Clbio.Application.Services
                             .FirstOrDefaultAsync(ct);
 
                         if (wsId == Guid.Empty)
-                            return Guid.Empty;
+                            throw new KeyNotFoundException("Board not found in database.");
 
                         return wsId;
                     },
