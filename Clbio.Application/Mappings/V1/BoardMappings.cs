@@ -19,7 +19,7 @@ namespace Clbio.Application.Mappings.V1
                 .ForMember(dest => dest.Columns, opt => opt.Ignore());
 
             CreateMap<Board, ReadBoardDto>()
-                .ForMember(dest => dest.ColumnCount, opt => opt.MapFrom(src => src.Columns.Count));
+                .ForMember(dest => dest.ColumnCount, opt => opt.MapFrom(src => src.Columns != null ? src.Columns.Count : 0));
         }
     }
 }

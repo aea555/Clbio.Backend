@@ -12,7 +12,6 @@ namespace Clbio.API.Controllers.v1
     public class BoardController(IBoardAppService service) : ControllerBase
     {
         private readonly IBoardAppService _service = service;
-
         // -------------------------------------------------------------
         // GET: /api/workspaces/{workspaceId}/boards
         // Requires ViewBoard

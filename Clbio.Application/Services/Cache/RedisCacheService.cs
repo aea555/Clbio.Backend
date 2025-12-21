@@ -63,9 +63,12 @@ namespace Clbio.Application.Services.Cache
 
         public async Task<T> GetOrSetAsync<T>(string key, Func<Task<T>> factory, TimeSpan? expiration = null)
         {
-            var cached = await GetAsync<T>(key);
-            if (cached is not null)
-                return cached;
+            var data = await Db.StringGetAsync(key);
+
+            if (data.HasValue)
+            {
+                return JsonSerializer.Deserialize<T>(data!)!;
+            }
 
             var value = await factory();
             await SetAsync(key, value, expiration);

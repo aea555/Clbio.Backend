@@ -16,6 +16,8 @@ namespace Clbio.Application.DTOs.V1.Auth
 
         [Required]
         [StringLength(100, MinimumLength = 6)]
+        [RegularExpression(@"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{6,}$",
+            ErrorMessage = "New password must be at least 6 characters long and contain at least one uppercase letter, one lowercase letter, and one number.")]
         public string NewPassword { get; set; } = null!;
     }
 }

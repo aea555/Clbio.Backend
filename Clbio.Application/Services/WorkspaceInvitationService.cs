@@ -101,6 +101,7 @@ namespace Clbio.Application.Services
                 {
                     WorkspaceId = workspaceId,
                     InviterId = actorId,
+                    InviterName = actorInfo?.DisplayName,
                     Email = dto.Email,
                     Role = dto.Role,
                     Status = InvitationStatus.Pending,
@@ -147,7 +148,7 @@ namespace Clbio.Application.Services
 
                 var versionKey = CacheKeys.UserInvitationVersion(userId);
                 var version = await cache.GetAsync<long>(versionKey); 
-                if (version == 0) version = 1; 
+                if (version == 0) version = DateTime.UtcNow.Ticks;
 
                 var cacheKey = CacheKeys.UserInvitationsPaged(userId, page, pageSize, version);
 
@@ -164,10 +165,12 @@ namespace Clbio.Application.Services
                         if (string.IsNullOrEmpty(userEmail))
                             throw new InvalidOperationException("User email not found!");
 
+                        var normalizedEmail = userEmail.ToLower();
+
                         var query = _invitationRepo.Query()
                             .AsNoTracking()
                             .Include(i => i.Workspace) 
-                            .Where(i => i.Email == userEmail 
+                            .Where(i => i.Email.ToLower() == normalizedEmail 
                                         && i.Status == InvitationStatus.Pending 
                                         && i.ExpiresAt > DateTime.UtcNow);
 

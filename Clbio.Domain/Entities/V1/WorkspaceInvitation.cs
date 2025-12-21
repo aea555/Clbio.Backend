@@ -9,6 +9,7 @@ namespace Clbio.Domain.Entities.V1
         public Workspace Workspace { get; set; } = null!;
 
         public Guid InviterId { get; set; }
+        public string? InviterName {get; set;}
         
         public string Email { get; set; } = default!;
         public WorkspaceRole Role { get; set; } 
