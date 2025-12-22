@@ -321,7 +321,7 @@ namespace Clbio.Application.Services.Auth
         }
 
         // --------------------------------------------------------------
-        // EMAIL VERIFICATION (token)
+        // EMAIL VERIFICATION (token, deprecated)
         // --------------------------------------------------------------
         public async Task<Result> VerifyEmailAsync(string rawToken, string? userAgent,
             string? ipAddress, CancellationToken ct = default)
@@ -330,7 +330,7 @@ namespace Clbio.Application.Services.Auth
         }
 
         // --------------------------------------------------------------
-        // FORGOT PASSWORD 
+        // FORGOT PASSWORD (deprecated)
         // --------------------------------------------------------------
         public async Task<Result> ForgotPasswordAsync(
             ForgotPasswordRequestDto dto,
@@ -341,7 +341,7 @@ namespace Clbio.Application.Services.Auth
         }
 
         // --------------------------------------------------------------
-        // RESET PASSWORD 
+        // RESET PASSWORD (deprecated)
         // --------------------------------------------------------------
         public async Task<Result> ResetPasswordAsync(
             ResetPasswordRequestDto dto,
@@ -351,6 +351,29 @@ namespace Clbio.Application.Services.Auth
             return await _passwordReset.ResetPasswordAsync(dto, ipAddress, ct);
         }
 
+        // --------------------------------------------------------------
+        // VALIDATE OTP ONLY 
+        // --------------------------------------------------------------
+        public async Task<Result<string>> ValidateOtpOnlyAsync(
+            string email,
+            string code,
+            CancellationToken ct = default)
+        {
+            return await _passwordReset.ValidateOtpOnlyAsync(email, code, ct);
+        }
+
+        // --------------------------------------------------------------
+        // RESET PASSWORD WITH TOKEN 
+        // --------------------------------------------------------------
+        public async Task<Result> ResetPasswordWithTokenAsync(
+            string token,
+            string newPassword,
+            string? ipAddress,
+            CancellationToken ct = default)
+        {
+            return await _passwordReset.ResetPasswordWithTokenAsync(token, newPassword, ipAddress, ct);
+        }
+        
         // --------------------------------------------------------------
         // LOGOUT
         // --------------------------------------------------------------

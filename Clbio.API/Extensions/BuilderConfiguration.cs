@@ -91,8 +91,6 @@ namespace Clbio.API.Extensions
             var awsSettings = new AwsSettings();
             builder.Configuration.GetSection("AWS").Bind(awsSettings);
 
-            var awsOptions = builder.Configuration.GetAWSOptions();
-
             builder.Services.AddSingleton<IAmazonS3>(sp =>
             {
                 var credentials = new BasicAWSCredentials(awsSettings.AccessKey, awsSettings.SecretKey);
@@ -118,7 +116,7 @@ namespace Clbio.API.Extensions
                 .AddEndpointsApiExplorer()
                 .AddSwaggerGen()
                 .AddClbio(builder.Configuration)
-                .AddCorsPolicy()
+                .AddCorsPolicy(builder.Configuration)
                 .AddGlobalRateLimiter()
                 .AddControllers();
 

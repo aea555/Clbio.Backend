@@ -7,7 +7,7 @@ namespace Clbio.Application.DTOs.V1.Auth
     {
         [Required]
         [EmailAddress]
-        [MaxLength(100)]
+        [MaxLength(320)]
         public string Email { get; set; } = null!;
     }
 }

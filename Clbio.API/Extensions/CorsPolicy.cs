@@ -2,28 +2,30 @@
 {
     public static class CorsPolicy
     {
-        public static IServiceCollection AddCorsPolicy(this IServiceCollection services)
+        public static IServiceCollection AddCorsPolicy(this IServiceCollection services, IConfiguration configuration)
         {
-            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Testing")
+            var allowedOrigins = configuration.GetSection("AllowedOrigins").Get<string[]>() ?? [];
+
+            services.AddCors(options =>
             {
-                services.AddCors(options =>
+                options.AddPolicy("AllowFrontend", policy =>
                 {
-                    options.AddPolicy("AllowFrontendDev", policy =>
-                        policy.AllowAnyOrigin()
+                    if (allowedOrigins.Length > 0)
+                    {
+                        policy.WithOrigins(allowedOrigins)
                               .AllowAnyHeader()
-                              .AllowAnyMethod());
-                });
-            }
-            else
-            {
-                services.AddCors(options =>
-                {
-                    options.AddPolicy("AllowFrontendDev", policy =>
+                              .AllowAnyMethod()
+                              .AllowCredentials(); 
+                    }
+                    else
+                    {
                         policy.WithOrigins("http://localhost:3000")
                               .AllowAnyHeader()
-                              .AllowAnyMethod());
+                              .AllowAnyMethod();
+                    }
                 });
-            }
+            });
+
             return services;
         }
     }
