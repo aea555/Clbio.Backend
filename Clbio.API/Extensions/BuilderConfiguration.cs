@@ -116,7 +116,7 @@ namespace Clbio.API.Extensions
                 .AddEndpointsApiExplorer()
                 .AddSwaggerGen()
                 .AddClbio(builder.Configuration)
-                .AddCorsPolicy()
+                .AddCorsPolicy(builder.Configuration)
                 .AddGlobalRateLimiter()
                 .AddControllers();
 

@@ -9,6 +9,8 @@ var builder = WebApplication.CreateBuilder(args)
     .ConfigureBuilder()
     .ConfigureBuilderServices();
 
+builder.Services.AddHealthChecks();
+
 var app = builder.Build();
 
 app.ApplyMigrations();
