@@ -40,7 +40,7 @@ namespace Clbio.Application.Services.Auth
         private readonly ILogger<PasswordResetService>? _logger = logger;
 
         // -------------------------------------------------------------
-        // FORGOT PASSWORD
+        // FORGOT PASSWORD 
         // -------------------------------------------------------------
         public async Task<Result> ForgotPasswordAsync(
             ForgotPasswordRequestDto dto,
@@ -66,7 +66,7 @@ namespace Clbio.Application.Services.Auth
 
                 if (user.AuthProvider == AuthProvider.Google && string.IsNullOrWhiteSpace(user.PasswordHash))
                     return Result.Ok();
-                
+
                 if (!user.EmailVerified)
                 {
                     await _throttling.LogResetAttempt(user.Email, false, ipAddress, ct);
@@ -79,7 +79,7 @@ namespace Clbio.Application.Services.Auth
                     await _throttling.LogResetAttempt(user.Email, false, ipAddress, ct);
                     return Result.Ok();
                 }
-                
+
                 var cooldownKey = $"otp:reset_pass_cooldown:{user.Id}";
                 var inCooldown = await _cache.GetAsync<string>(cooldownKey);
 
@@ -98,7 +98,7 @@ namespace Clbio.Application.Services.Auth
                     <h1 style='color: #4A90E2; letter-spacing: 5px;'>{otp}</h1>
                     <p>This code expires in 10 minutes.</p>
                     <p>If you didn't request this, ignore this email.</p>";
-                
+
                 try
                 {
                     await _emailSender.SendEmailAsync(user.Email, subject, body, ct);
@@ -121,7 +121,7 @@ namespace Clbio.Application.Services.Auth
         }
 
         // -------------------------------------------------------------
-        // RESET PASSWORD
+        // RESET PASSWORD (deprecated)
         // -------------------------------------------------------------
         public async Task<Result> ResetPasswordAsync(
             ResetPasswordRequestDto dto,
@@ -183,6 +183,65 @@ namespace Clbio.Application.Services.Auth
                 _logger?.LogError(ex, "Password reset failed.");
                 return Result.Fail("Unable to reset password.");
             }
+        }
+
+        public async Task<Result<string>> ValidateOtpOnlyAsync(string email, string code, CancellationToken ct = default)
+        {
+            var normalizedEmail = email.ToLowerInvariant().Trim();
+            var user = await _userRepo.Query().AsNoTracking().FirstOrDefaultAsync(u => u.Email == normalizedEmail, ct);
+            if (user == null) return Result<string>.Fail("Invalid request.");
+
+            var key = $"otp:reset_pass:{user.Id}";
+            var storedOtp = await _cache.GetAsync<string>(key);
+
+            if (storedOtp is null)
+                return Result<string>.Fail("Verification code expired.");
+
+            if (!string.Equals(storedOtp, code))
+                return Result<string>.Fail("Invalid verification code.");
+
+            var resetToken = Guid.NewGuid().ToString("N");
+            var resetKey = $"password:reset:token:{resetToken}";
+
+            await _cache.SetAsync(resetKey, user.Id.ToString(), TimeSpan.FromMinutes(5));
+
+            await _cache.RemoveAsync(key);
+
+            return Result<string>.Ok(resetToken);
+        }
+
+        public async Task<Result> ResetPasswordWithTokenAsync(string token, string newPassword, string? ipAddress, CancellationToken ct = default)
+        {
+            var resetKey = $"password:reset:token:{token}";
+            var userIdStr = await _cache.GetAsync<string>(resetKey);
+
+            if (string.IsNullOrEmpty(userIdStr) || !Guid.TryParse(userIdStr, out var userId))
+                return Result.Fail("Reset session expired or invalid.");
+
+            var user = await _userRepo.Query().FirstOrDefaultAsync(u => u.Id == userId, ct);
+            if (user == null) return Result.Fail("User not found.");
+
+            var hashPwd = PasswordManager.HashPassword(newPassword);
+            if (!hashPwd.Success)
+            {
+                await _throttling.LogResetAttempt(user.Email, false, ipAddress, ct);
+                return Result.Fail(hashPwd.Error ?? "Password hashing failed.");
+            }
+
+            user.PasswordHash = hashPwd.Value!;
+
+            await _refreshTokenRepo.Query()
+                .Where(rt => rt.UserId == user.Id && rt.RevokedUtc == null)
+                .ExecuteUpdateAsync(s => s.SetProperty(rt => rt.RevokedUtc, DateTime.UtcNow), ct);
+
+            await _uow.SaveChangesAsync(ct);
+
+            await _cache.RemoveAsync(resetKey);
+            await _cache.RemoveAsync($"otp:reset_pass_cooldown:{user.Id}");
+
+            await _throttling.LogResetAttempt(user.Email, true, ipAddress, ct);
+
+            return Result.Ok();
         }
     }
 }

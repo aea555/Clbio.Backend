@@ -160,7 +160,6 @@ public sealed class EmailVerificationService(
         {
             var normalizedEmail = email.ToLowerInvariant().Trim();
             var user = await _userRepo.Query()
-                .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Email == normalizedEmail, ct) 
             ?? throw new Exception("User not found.");
 
@@ -261,7 +260,7 @@ public sealed class EmailVerificationService(
             ?? throw new Exception("User not found.");
 
             if (user.EmailVerified)
-                return Result.Ok(); // Already verified
+                return Result.Fail("Email is already verified.");
 
             var cooldownKey = $"otp:cooldown:{normalizedEmail}";
             var inCooldown = await _cache.GetAsync<string>(cooldownKey);

@@ -178,12 +178,13 @@ namespace Clbio.API.Controllers.v1.Auth
         [HttpGet("test-email")]
         public async Task<IActionResult> TestEmail([FromServices] IEmailSender sender)
         {
-            await sender.SendEmailAsync(
-                "akarahmet2002@gmail.com",
-                "Hello World!",
-                "<h1>Hello</h1><p>This is a test email.</p>"
-            );
-            return Ok("Sent.");
+            return Forbid();
+            // await sender.SendEmailAsync(
+            //     "akarahmet2002@gmail.com",
+            //     "Hello World!",
+            //     "<h1>Hello</h1><p>This is a test email.</p>"
+            // );
+            // return Ok("Sent.");
         }
 
         [HttpPost("forgot-password")]
@@ -200,12 +201,31 @@ namespace Clbio.API.Controllers.v1.Auth
         [AllowAnonymous]
         public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequestDto dto, CancellationToken ct)
         {
-            var result = await _authService.ResetPasswordAsync(dto, GetIp(), ct);
+            return Forbid();
+        }
+
+        [HttpPost("reset-password-with-token")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetPasswordWithToken([FromBody] ResetPasswordWithTokenDto dto, CancellationToken ct)
+        {
+            var result = await _authService.ResetPasswordWithTokenAsync(dto.Token, dto.NewPassword, GetIp()!, ct);
+
+            if (!result.Success)
+                return BadRequest(ApiResponse<object>.Fail(result.Error!, result.Code));
+            
+            return Ok(ApiResponse.Ok("Password reset successful."));
+        }
+
+        [HttpPost("reset-password-validate-otp")]
+        [AllowAnonymous]
+        public async Task<IActionResult> ResetPasswordValidateOtp([FromBody] ValidateOtpOnlyDto dto, CancellationToken ct)
+        {
+            var result = await _authService.ValidateOtpOnlyAsync(dto.Email, dto.Code, ct);
 
             if (!result.Success)
                 return BadRequest(ApiResponse<object>.Fail(result.Error!, result.Code));
 
-            return Ok(ApiResponse<object>.Ok("Password has been reset successfully."));
+            return Ok(ApiResponse<string>.Ok(result.Value!));
         }
     }
 }

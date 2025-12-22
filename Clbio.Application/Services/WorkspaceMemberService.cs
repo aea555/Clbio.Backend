@@ -37,6 +37,31 @@ namespace Clbio.Application.Services
         private readonly IRepository<User> _userRepo = uow.Repository<User>();
         private readonly IRepository<Workspace> _workspaceRepo = uow.Repository<Workspace>();
 
+        public async Task<Result<ReadWorkspaceMemberDto>> GetByUserIdAsync(Guid workspaceId, Guid userId, CancellationToken ct = default)
+        {
+            return await SafeExecution.ExecuteSafeAsync(async () =>
+            {
+                var version = await _versions.GetMembershipVersionAsync(userId, workspaceId);
+                var key = CacheKeys.Membership(userId, workspaceId, version);
+
+                var memberDto = await _cache.GetOrSetAsync(
+                    key,
+                    async () =>
+                    {
+                        var member = await _memberRepo.Query()
+                            .AsNoTracking()
+                            .Where(m => m.WorkspaceId == workspaceId && m.UserId == userId)
+                            .Include(m => m.User)
+                            .FirstOrDefaultAsync(ct);
+
+                        return _mapper.Map<ReadWorkspaceMemberDto>(member);
+                    },
+                    TimeSpan.FromMinutes(30));
+
+                return memberDto;
+            }, _logger, "MEMBER_GET_BY_USER_ID_FAILED");
+        }
+
         public async Task<Result<List<ReadWorkspaceMemberDto>>> GetByWorkspaceAsync(Guid workspaceId, CancellationToken ct = default)
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>

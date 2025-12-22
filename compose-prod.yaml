@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:16-alpine 
+    container_name: clbio-db-prod
+    restart: always
+    ports:
+      - "5432:5432" 
+    env_file:
+      - .env.prod
+    volumes:
+      - postgres-prod-data:/var/lib/postgresql/data
+    networks:
+      - clbio-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: clbio-redis-prod
+    restart: always
+    networks:
+      - clbio-net
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_PASSWORD}"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  clbio-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: clbio-api-prod
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "80:8080" 
+    env_file:
+      - .env.prod
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      - ConnectionStrings__RedisConnection=redis:6379,password=${REDIS_PASSWORD},abortConnect=false
+    networks:
+      - clbio-net
+    healthcheck:
+        test: ["CMD-SHELL", "curl -f http://localhost:8080/dev/health || exit 1"]
+        interval: 30s
+        timeout: 10s
+        retries: 3
+
+volumes:
+  postgres-prod-data:
+
+networks:
+  clbio-net:
+    driver: bridge

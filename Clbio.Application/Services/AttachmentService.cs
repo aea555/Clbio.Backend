@@ -10,6 +10,7 @@ using Clbio.Application.Extensions;
 using Clbio.Application.Interfaces.EntityServices;
 using Clbio.Application.Services.Base;
 using Clbio.Domain.Entities.V1;
+using Clbio.Domain.Enums;
 using Clbio.Shared.Results;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -21,12 +22,13 @@ namespace Clbio.Application.Services
         IMapper mapper,
         ISocketService socketService,
         ICacheInvalidationService invalidator,
-        IFileStorageService fileStorage, 
+        IFileStorageService fileStorage,
         ILogger<AttachmentService>? logger = null)
         : ServiceBase<Attachment>(uow, logger), IAttachmentAppService
     {
         private readonly IRepository<TaskItem> _taskRepo = uow.Repository<TaskItem>();
         private readonly IRepository<Attachment> _attachRepo = uow.Repository<Attachment>();
+        private readonly IRepository<WorkspaceMember> _memberRepo = uow.Repository<WorkspaceMember>();
 
         // ---------------------------------------------------------------------
         // GET ALL
@@ -60,10 +62,10 @@ namespace Clbio.Application.Services
         // ---------------------------------------------------------------------
 
         public async Task<Result<List<ReadAttachmentDto>>> CreateRangeAsync(
-            Guid workspaceId, 
+            Guid workspaceId,
             Guid taskId,
-            CreateAttachmentDto dto, 
-            Guid userId, 
+            CreateAttachmentDto dto,
+            Guid userId,
             CancellationToken ct = default)
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
@@ -89,18 +91,18 @@ namespace Clbio.Application.Services
 
                 var uploadTasks = dto.Files.Select(async file =>
                 {
-                    if (file.Length > 10 * 1024 * 1024) 
+                    if (file.Length > 10 * 1024 * 1024)
                         throw new InvalidOperationException($"File '{file.FileName}' exceeds 10MB limit.");
 
                     var folderPath = $"workspaces/{workspaceId}/tasks/{taskId}";
-                    
+
                     using var stream = file.OpenReadStream();
-                    
+
                     var url = await fileStorage.UploadAsync(
-                        stream, 
-                        file.FileName, 
-                        file.ContentType, 
-                        folderPath, 
+                        stream,
+                        file.FileName,
+                        file.ContentType,
+                        folderPath,
                         ct);
 
                     return new Attachment
@@ -119,9 +121,9 @@ namespace Clbio.Application.Services
 
                 await _attachRepo.AddRangeAsync(attachments, ct);
                 await _uow.SaveChangesAsync(ct);
-                
+
                 var createdIds = attachments.Select(a => a.Id).ToList();
-                
+
                 var createdEntities = await _attachRepo.Query()
                     .AsNoTracking()
                     .Include(a => a.UploadedBy)
@@ -129,7 +131,7 @@ namespace Clbio.Application.Services
                     .ToListAsync(ct);
 
                 await invalidator.InvalidateWorkspace(workspaceId);
-                await socketService.SendToWorkspaceAsync(workspaceId, "WorkspaceAttachmentCreated", new {workspaceId, taskId});
+                await socketService.SendToWorkspaceAsync(workspaceId, "WorkspaceAttachmentCreated", new { workspaceId, taskId });
 
                 return mapper.Map<List<ReadAttachmentDto>>(createdEntities);
 
@@ -139,7 +141,7 @@ namespace Clbio.Application.Services
         // ---------------------------------------------------------------------
         // DELETE
         // ---------------------------------------------------------------------
-        public async Task<Result<ReadTaskItemDto>> DeleteAsync(Guid workspaceId, Guid attachmentId, CancellationToken ct = default)
+        public async Task<Result<ReadTaskItemDto>> DeleteAsync(Guid workspaceId, Guid attachmentId, Guid userId, CancellationToken ct = default)
         {
             return await SafeExecution.ExecuteSafeAsync(async () =>
             {
@@ -151,6 +153,27 @@ namespace Clbio.Application.Services
 
                 if (attachment.Task.Column.Board.WorkspaceId != workspaceId)
                     throw new UnauthorizedAccessException("Access denied.");
+
+                bool isOwnerOfAttachment = attachment.UploadedById == userId;
+
+                if (!isOwnerOfAttachment)
+                {
+                    var userRole = await _memberRepo.Query()
+                    .AsNoTracking()
+                    .Where(m => m.UserId == userId)
+                    .Select(m => m.Role)
+                    .FirstOrDefaultAsync(ct);
+                    
+                    bool canDelete = userRole switch
+                    {
+                        WorkspaceRole.Owner => true, 
+                        WorkspaceRole.PrivilegedMember => await CheckIfCanPrivilegedDelete(attachment.UploadedById, workspaceId),
+                        _ => false 
+                    };
+
+                    if (!canDelete)
+                        throw new UnauthorizedAccessException("You don't have permission to delete this member's attachment.");
+                }
 
                 try
                 {
@@ -164,15 +187,27 @@ namespace Clbio.Application.Services
 
                 await _attachRepo.DeleteAsync(attachmentId, ct);
                 await _uow.SaveChangesAsync(ct);
-                
+
                 await invalidator.InvalidateWorkspace(workspaceId);
-                await socketService.SendToWorkspaceAsync(workspaceId, "WorkspaceAttachmentDeleted", new {workspaceId});
+                await socketService.SendToWorkspaceAsync(workspaceId, "WorkspaceAttachmentDeleted", new { workspaceId, attachment.TaskId });
 
                 var readDto = mapper.Map<ReadTaskItemDto>(attachment.Task);
 
                 return readDto;
 
             }, _logger, "ATTACHMENT_DELETE_FAILED");
+        }
+
+        private async Task<bool> CheckIfCanPrivilegedDelete(Guid creatorId, Guid workspaceId)
+        {
+            var creatorMemberRole = await _uow.Repository<WorkspaceMember>()
+                .Query()
+                .AsNoTracking()
+                .Where(m => m.UserId == creatorId && m.WorkspaceId == workspaceId)
+                .Select(m => m.Role)
+                .FirstOrDefaultAsync(); 
+
+            return creatorMemberRole != WorkspaceRole.Owner;
         }
     }
 }

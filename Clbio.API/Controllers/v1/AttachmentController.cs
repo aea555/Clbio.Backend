@@ -69,7 +69,8 @@ namespace Clbio.API.Controllers.v1
             [FromRoute] Guid attachmentId,
             CancellationToken ct)
         {
-            var result = await _service.DeleteAsync(workspaceId, attachmentId, ct);
+            var userId = User.GetUserId();
+            var result = await _service.DeleteAsync(workspaceId, attachmentId, userId, ct);
 
             if (!result.Success)
                 return BadRequest(ApiResponse.Fail(result.Error));

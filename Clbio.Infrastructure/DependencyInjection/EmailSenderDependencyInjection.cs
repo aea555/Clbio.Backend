@@ -9,7 +9,7 @@ namespace Clbio.Infrastructure.DependencyInjection
     {
         public static IServiceCollection AddEmailSender(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddScoped<IEmailSender, MailerSendEmailSender>();
+            services.AddScoped<IEmailSender, MailTrapEmailSender>();
             return services;
         }
     }

@@ -6,6 +6,7 @@ namespace Clbio.Application.Interfaces.EntityServices
 {
     public interface IWorkspaceMemberAppService
     {
+        Task<Result<ReadWorkspaceMemberDto>> GetByUserIdAsync(Guid workspaceId, Guid userId, CancellationToken ct = default);
         Task<Result<List<ReadWorkspaceMemberDto>>> GetByWorkspaceAsync(Guid workspaceId, CancellationToken ct = default);
         Task<Result<ReadWorkspaceMemberDto>> AddMemberAsync(Guid workspaceId, CreateWorkspaceMemberDto dto, Guid actorId, CancellationToken ct = default);
         Task<Result<ReadWorkspaceMemberDto>> UpdateRoleAsync(Guid workspaceId, Guid targetUserId, WorkspaceRole newRole, Guid actorUserId, CancellationToken ct = default);

@@ -9,5 +9,7 @@ namespace Clbio.Application.Interfaces
         Task<Result> ForgotPasswordAsync(ForgotPasswordRequestDto dto,
             string? ipAddress,
             CancellationToken ct = default);
+        Task<Result<string>> ValidateOtpOnlyAsync(string email, string code, CancellationToken ct = default);
+        Task<Result> ResetPasswordWithTokenAsync(string token, string newPassword, string? ipAddress, CancellationToken ct = default);
     }
 }

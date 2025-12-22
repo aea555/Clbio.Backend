@@ -23,6 +23,15 @@ namespace Clbio.API.Controllers.v1
             return result.Success ? Ok(ApiResponse.Ok(result.Value)) : BadRequest(ApiResponse.Fail(result.Error));
         }
 
+        [HttpGet("me")]
+        [RequirePermission(Permission.ViewMember, "workspaceId")]
+        public async Task<IActionResult> GetMyMembership(Guid workspaceId, CancellationToken ct)
+        {
+            var userId = User.GetUserId();
+            var result = await _service.GetByUserIdAsync(workspaceId, userId, ct);
+            return result.Success ? Ok(ApiResponse.Ok(result.Value)) : BadRequest(ApiResponse.Fail(result.Error));
+        }
+
         [HttpPost]
         [RequirePermission(Permission.AddMember, "workspaceId")]
         public async Task<IActionResult> Add(Guid workspaceId, [FromBody] CreateWorkspaceMemberDto dto, CancellationToken ct)
