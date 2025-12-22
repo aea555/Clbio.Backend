@@ -11,22 +11,20 @@ namespace Clbio.API.DependencyInjection
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var env = scope.ServiceProvider.GetRequiredService<IWebHostEnvironment>();
 
-            if (env.IsDevelopment())
+            if (env.IsEnvironment("Testing")) return;
+
+            try
             {
-                try
-                {
-                    db.Database.Migrate();
-                    Console.WriteLine("#---[Devmode]---# Database migrated successfully.");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"#---[Devmode]---# Database migration failed: {ex.Message}");
-                    throw;
-                }
+                Console.WriteLine($"#---[{env.EnvironmentName}]---# Checking for pending migrations...");
+
+                db.Database.Migrate();
+
+                Console.WriteLine($"#---[{env.EnvironmentName}]---# Database migrated successfully.");
             }
-            else
+            catch (Exception ex)
             {
-                Console.WriteLine("ℹ️ Skipping automatic migrations (Production environment).");
+                Console.WriteLine($"#---[{env.EnvironmentName}]---# CRITICAL: Migration failed: {ex.Message}");
+                throw;
             }
         }
     }

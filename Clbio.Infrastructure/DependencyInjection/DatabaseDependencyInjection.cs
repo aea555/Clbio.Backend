@@ -10,23 +10,16 @@ namespace Clbio.Infrastructure.DependencyInjection
         public static IServiceCollection AddDatabase(this IServiceCollection services, IConfiguration configuration)
         {
             var env = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-
             if (env == "Testing")
             {
                 return services;
             }
 
-            string connectionString;
+            var connectionString = configuration.GetConnectionString("DefaultConnection");
 
-            if (Environment.GetEnvironmentVariable("DOTNET_RUNNING_IN_CONTAINER") == "true")
+            if (string.IsNullOrEmpty(connectionString))
             {
-                connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_DOCKER");
-            }
-            else
-            {
-                connectionString =
-                    Environment.GetEnvironmentVariable("DB_CONNECTION_LOCAL") ??
-                    configuration.GetConnectionString("DefaultConnection");
+                throw new InvalidOperationException("Connection string 'DefaultConnection' not found in configuration or environment variables.");
             }
 
             services.AddDbContext<AppDbContext>(options =>
