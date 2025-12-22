@@ -4,7 +4,7 @@ services:
     container_name: clbio-db-prod
     restart: always
     env_file:
-      - .env.prod
+      - .env.production
     volumes:
       - postgres-prod-data:/var/lib/postgresql/data
     networks:
@@ -44,7 +44,7 @@ services:
     expose:
       - "8080"
     env_file:
-      - .env.prod
+      - .env.production
     environment:
       - ASPNETCORE_ENVIRONMENT=Production
       - ConnectionStrings__DefaultConnection=Host=postgres;Port=5432;Database=${POSTGRES_DB};Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
