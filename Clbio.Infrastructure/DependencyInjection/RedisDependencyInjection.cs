@@ -12,18 +12,19 @@ namespace Clbio.Infrastructure.DependencyInjection
         {
             var envName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
 
-            // In tests don't wire real Redis
             if (string.Equals(envName, "Testing", StringComparison.OrdinalIgnoreCase))
             {
-                // Use simple in-memory cache
                 services.AddDistributedMemoryCache();
                 return services;
             }
 
-            var redisConn = configuration.GetConnectionString("RedisConnection")
-                         ?? "localhost:6379";
+            var redisConn = configuration.GetConnectionString("RedisConnection");
 
-            // In non-test envs, real Redis
+            if (string.IsNullOrEmpty(redisConn))
+            {
+                throw new InvalidOperationException("Redis ConnectionString 'RedisConnection' is missing in environment variables!");
+            }
+
             services.AddSingleton<IConnectionMultiplexer>(sp =>
                 ConnectionMultiplexer.Connect(redisConn));
 
@@ -32,7 +33,6 @@ namespace Clbio.Infrastructure.DependencyInjection
                 options.Configuration = redisConn;
             });
 
-            // Presence service
             services.AddScoped<IPresenceService, RedisPresenceService>();
 
             return services;
