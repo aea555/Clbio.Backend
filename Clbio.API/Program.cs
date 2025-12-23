@@ -1,3 +1,4 @@
+using System.Net;
 using Amazon.S3;
 using Clbio.API.DependencyInjection;
 using Clbio.API.Extensions;
@@ -5,6 +6,7 @@ using Clbio.API.Hubs;
 using Clbio.API.Middleware;
 using Clbio.Application.Extensions;
 using Clbio.Infrastructure.Options;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
 
 DotNetEnv.Env.Load();
@@ -53,6 +55,16 @@ builder.Services.AddSingleton<IAmazonS3>(sp =>
 
 var app = builder.Build();
 
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders =
+        ForwardedHeaders.XForwardedFor |
+        ForwardedHeaders.XForwardedProto,
+    KnownNetworks = { },
+    KnownProxies = { }
+});
+
+
 SafeExecution.IsDevelopment = app.Environment.IsDevelopment();
 
 if (!app.Environment.IsDevelopment())
@@ -63,13 +75,15 @@ if (!app.Environment.IsDevelopment())
 app.ApplyMigrations();
 await app.AddRolePermissionSeederAsync();
 
+app.UseWebSockets();
+
 app.UseMiddleware<ErrorHandlerMiddleware>();
 app.UseApiSecurity(app.Environment);
 app.UseRouting();
 
 if (!app.Environment.IsEnvironment("Testing"))
 {
-    app.UseCors("AllowFrontendDev");
+    app.UseCors("AllowFrontend");
     app.UseAuthentication();
     app.UseAuthorization();
 }
