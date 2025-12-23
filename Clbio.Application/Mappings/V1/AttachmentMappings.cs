@@ -10,7 +10,8 @@ namespace Clbio.Application.Mappings.V1
         {
             CreateMap<Attachment, ReadAttachmentDto>()
                 .ForMember(dest => dest.UploadedByDisplayName, opt => opt.MapFrom(src => src.UploadedBy != null ? src.UploadedBy.DisplayName : "Unknown"))
-                .ForMember(dest => dest.UploadedByAvatarUrl, opt => opt.MapFrom(src => src.UploadedBy != null ? src.UploadedBy.AvatarUrl : null));
+                .ForMember(dest => dest.UploadedByAvatarUrl, opt => opt.MapFrom(src => src.UploadedBy != null ? src.UploadedBy.AvatarUrl : null))
+                .ForMember(dest => dest.Url, opt => opt.MapFrom<S3UrlResolver>());
         }
     }
 }

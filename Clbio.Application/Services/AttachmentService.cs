@@ -98,7 +98,7 @@ namespace Clbio.Application.Services
 
                     using var stream = file.OpenReadStream();
 
-                    var url = await fileStorage.UploadAsync(
+                    var s3Key = await fileStorage.UploadAsync(
                         stream,
                         file.FileName,
                         file.ContentType,
@@ -112,7 +112,7 @@ namespace Clbio.Application.Services
                         FileName = file.FileName,
                         ContentType = file.ContentType,
                         SizeBytes = file.Length,
-                        Url = url,
+                        Url = s3Key,
                         CreatedAt = DateTime.UtcNow
                     };
                 });
