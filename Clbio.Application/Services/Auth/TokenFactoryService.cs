@@ -133,7 +133,7 @@ public sealed class TokenFactoryService(
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Refresh token rotation failed.");
-            return Result<TokenResponseDto>.Fail("Unable to rotate refresh token.");
+            throw;
         }
     }
 
@@ -158,7 +158,7 @@ public sealed class TokenFactoryService(
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Failed to revoke tokens for {UserId}", userId);
-            return Result.Fail("Failed to revoke tokens.");
+            throw;
         }
     }
 

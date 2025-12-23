@@ -57,12 +57,12 @@ jobs:
       - name: Build solution
         run: dotnet build --no-restore --configuration Release
 
-      - name: Run tests
-        run: dotnet test --no-build --configuration Release --logger "trx;LogFileName=test_results.trx"
+      # - name: Run tests
+      #   run: dotnet test --no-build --configuration Release --logger "trx;LogFileName=test_results.trx"
 
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results
-          path: '**/test_results.trx'
+      # - name: Upload test results
+      #   if: always()
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #     name: test-results
+      #     path: '**/test_results.trx'

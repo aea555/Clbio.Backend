@@ -2,6 +2,7 @@ using Amazon.S3;
 using Amazon.S3.Model;
 using Clbio.Abstractions.Interfaces.Infrastructure;
 using Clbio.Infrastructure.Options;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
@@ -13,7 +14,6 @@ namespace Clbio.Infrastructure.Services
         ILogger<S3FileStorageService> logger) : IFileStorageService
     {
         private readonly AwsSettings _settings = settings.Value;
-
         public async Task<string> UploadAsync(Stream fileStream, string fileName, string contentType, string folderPath, CancellationToken ct = default)
         {
             try
