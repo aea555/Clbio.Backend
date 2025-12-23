@@ -33,7 +33,7 @@ namespace Clbio.Infrastructure.Services
 
                 await s3Client.PutObjectAsync(request, ct);
 
-                return GetPresignedUrl(key);
+                return key;
             }
             catch (Exception ex)
             {

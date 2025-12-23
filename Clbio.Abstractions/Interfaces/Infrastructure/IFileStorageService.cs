@@ -17,5 +17,6 @@ namespace Clbio.Abstractions.Interfaces.Infrastructure
         /// </summary>
         /// <param name="fileUrl">Silinecek dosyanın tam URL'i</param>
         Task DeleteAsync(string fileUrl, CancellationToken ct = default);
+        string GetPresignedUrl(string key, int durationMinutes = 60);
     }
 }
