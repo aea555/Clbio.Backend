@@ -1,7 +1,11 @@
+using Amazon.S3;
 using Clbio.API.DependencyInjection;
 using Clbio.API.Extensions;
 using Clbio.API.Hubs;
 using Clbio.API.Middleware;
+using Clbio.Application.Extensions;
+using Clbio.Infrastructure.Options;
+using Microsoft.Extensions.Options;
 
 DotNetEnv.Env.Load();
 
@@ -11,7 +15,39 @@ var builder = WebApplication.CreateBuilder(args)
 
 builder.Services.AddHealthChecks();
 
+var awsSettings = new AwsSettings
+{
+    BucketName = Environment.GetEnvironmentVariable("AwsSettings__BucketName")?.Trim() ?? "",
+    Region = Environment.GetEnvironmentVariable("AwsSettings__Region")?.Trim() ?? "eu-central-1",
+    AccessKey = Environment.GetEnvironmentVariable("AwsSettings__AccessKey")?.Trim() ?? "",
+    SecretKey = Environment.GetEnvironmentVariable("AwsSettings__SecretKey")?.Trim() ?? "",
+    PublicUrl = Environment.GetEnvironmentVariable("AwsSettings__PublicUrl")?.Trim()
+};
+
+Console.WriteLine($"#---[FINAL-DEBUG]---# Bucket: '{awsSettings.BucketName}'");
+Console.WriteLine($"#---[FINAL-DEBUG]---# Region: '{awsSettings.Region}'");
+
+if (string.IsNullOrEmpty(awsSettings.BucketName))
+{
+    throw new Exception("ERROR: AwsSettings__BucketName not found!");
+}
+
+builder.Services.AddSingleton(Options.Create(awsSettings));
+
+builder.Services.AddSingleton<IAmazonS3>(sp =>
+{
+    var credentials = new Amazon.Runtime.BasicAWSCredentials(awsSettings.AccessKey, awsSettings.SecretKey);
+    var config = new AmazonS3Config
+    {
+        RegionEndpoint = Amazon.RegionEndpoint.GetBySystemName(awsSettings.Region)
+    };
+    return new AmazonS3Client(credentials, config);
+});
+
+
 var app = builder.Build();
+
+SafeExecution.IsDevelopment = app.Environment.IsDevelopment();
 
 if (!app.Environment.IsDevelopment())
 {

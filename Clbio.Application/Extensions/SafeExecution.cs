@@ -5,6 +5,7 @@ namespace Clbio.Application.Extensions
 {
     public static class SafeExecution
     {
+        public static bool IsDevelopment { get; set; } = false;
         public static async Task<Result<TValue>> ExecuteSafeAsync<TValue>(
             Func<Task<TValue>> action,
             ILogger? logger = null,
@@ -17,7 +18,9 @@ namespace Clbio.Application.Extensions
             catch (Exception ex)
             {
                 logger?.LogError(ex, "Error executing service action: {ErrorCode}", errorCode);
-                return Result<TValue>.FromException(ex, errorCode);
+
+                string userMessage = IsDevelopment ? ex.Message : $"An error occurred. Code: {errorCode}";
+                return Result<TValue>.Fail(userMessage, errorCode);
             }
         }
 
@@ -34,7 +37,9 @@ namespace Clbio.Application.Extensions
             catch (Exception ex)
             {
                 logger?.LogError(ex, "Error executing service action: {ErrorCode}", errorCode);
-                return Result.Fail(ex.Message, errorCode);
+
+                string userMessage = IsDevelopment ? ex.Message : $"An error occurred. Code: {errorCode}";
+                return Result.Fail(userMessage, errorCode);
             }
         }
     }

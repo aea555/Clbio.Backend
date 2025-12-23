@@ -136,7 +136,7 @@ namespace Clbio.Application.Services.Auth
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "HasPermissionAsync failed with exception");
-                return Result<bool>.Fail("HasPermission failed.");
+                throw;
             }
         }
     }

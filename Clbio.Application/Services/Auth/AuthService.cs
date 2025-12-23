@@ -290,8 +290,7 @@ namespace Clbio.Application.Services.Auth
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "LoginWithGoogleAsync failed");
-                return Result<TokenResponseDto>.Fail($"Google login failed. Details: {ex.Message}");
-                //return Result<TokenResponseDto>.Fail("Google login failed.");
+                return Result<TokenResponseDto>.Fail($"Google login failed");
             }
         }
 

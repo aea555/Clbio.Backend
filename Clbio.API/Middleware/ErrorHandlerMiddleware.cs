@@ -4,7 +4,7 @@ using System.Text.Json;
 
 namespace Clbio.API.Middleware
 {
-    public class ErrorHandlerMiddleware(RequestDelegate next, ILogger<ErrorHandlerMiddleware> logger)
+    public class ErrorHandlerMiddleware(RequestDelegate next, IHostEnvironment env, ILogger<ErrorHandlerMiddleware> logger)
     {
         private readonly RequestDelegate _next = next;
         private readonly ILogger<ErrorHandlerMiddleware> _logger = logger;
@@ -31,7 +31,7 @@ namespace Clbio.API.Middleware
                 var errorResponse = new
                 {
                     status = context.Response.StatusCode,
-                    message = ex.Message,
+                    message = env.IsDevelopment() ? ex.Message: "Unexpected error",
                     traceId = context.TraceIdentifier
                 };
 
