@@ -1,5 +1,6 @@
 ﻿using AutoMapper;
 using Clbio.Application.DTOs.V1.Attachment;
+using Clbio.Application.Mappings.Resolvers;
 using Clbio.Domain.Entities.V1;
 
 namespace Clbio.Application.Mappings.V1

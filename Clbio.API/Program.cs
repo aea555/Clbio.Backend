@@ -5,6 +5,7 @@ using Clbio.API.Extensions;
 using Clbio.API.Hubs;
 using Clbio.API.Middleware;
 using Clbio.Application.Extensions;
+using Clbio.Application.Mappings.Resolvers;
 using Clbio.Infrastructure.Options;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Options;
@@ -16,6 +17,8 @@ var builder = WebApplication.CreateBuilder(args)
     .ConfigureBuilderServices();
 
 builder.Services.AddHealthChecks();
+builder.Services.AddTransient<S3UrlResolver>();
+builder.Services.AddTransient<S3UrlResolverUserAvatar>();
 
 var awsSettings = builder.Configuration.GetSection("AwsSettings").Get<AwsSettings>() ?? new AwsSettings();
 

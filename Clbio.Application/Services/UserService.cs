@@ -3,7 +3,6 @@ using Clbio.Abstractions.Interfaces;
 using Clbio.Abstractions.Interfaces.Cache;
 using Clbio.Abstractions.Interfaces.Infrastructure;
 using Clbio.Abstractions.Interfaces.Repositories;
-using Clbio.Abstractions.Interfaces.Services;
 using Clbio.Application.DTOs.V1.User;
 using Clbio.Application.Extensions;
 using Clbio.Application.Helpers;
@@ -35,12 +34,26 @@ namespace Clbio.Application.Services
                     key,
                     async () =>
                     {
-                        var user = await _userRepo.GetByIdAsync(userId, false, ct);                      
+                        var user = await _userRepo.GetByIdAsync(userId, false, ct);
                         if (user == null) return null;
 
-                        return mapper.Map<ReadUserDto>(user);
+                        return new ReadUserDto
+                        {
+                            Id = user.Id,
+                            Email = user.Email,
+                            DisplayName = user.DisplayName,
+                            AvatarUrl = user.AvatarUrl
+                        };
+
                     },
                 TimeSpan.FromHours(1));
+
+                if (userDto == null) return null;
+
+                if (!string.IsNullOrEmpty(userDto.AvatarUrl))
+                {
+                    userDto.AvatarUrl = fileStorage.GetPresignedUrl(userDto.AvatarUrl);
+                }
 
                 return userDto;
             }, _logger, "USER_GET_FAILED");
@@ -93,7 +106,7 @@ namespace Clbio.Application.Services
                 }
 
                 var folderPath = $"users/{userId}";
-                
+
                 using var stream = file.OpenReadStream();
                 var newUrl = await fileStorage.UploadAsync(stream, file.FileName, file.ContentType, folderPath, ct);
 
@@ -103,7 +116,7 @@ namespace Clbio.Application.Services
                 await _uow.SaveChangesAsync(ct);
                 await invalidator.InvalidateUser(userId);
 
-                return newUrl;
+                return fileStorage.GetPresignedUrl(newUrl);
 
             }, _logger, "AVATAR_UPLOAD_FAILED");
         }
@@ -116,7 +129,7 @@ namespace Clbio.Application.Services
                     ?? throw new InvalidOperationException("User not found.");
 
                 if (string.IsNullOrEmpty(user.AvatarUrl))
-                    return; 
+                    return;
 
                 // delete
                 try
@@ -125,7 +138,7 @@ namespace Clbio.Application.Services
                 }
                 catch
                 {
-                    
+
                 }
 
                 user.AvatarUrl = null;
